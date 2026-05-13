@@ -7,7 +7,8 @@
  * TODO:
  * Read binary file - done
  * Disassembly file
- *
+ * Consider R/M, D, MOD, DISP-LO, DISP-HI fields 
+ * Support different instructions, such as immidiate, add and sub
  */
 
 const char *byte_to_binary(int x)
@@ -23,9 +24,28 @@ const char *byte_to_binary(int x)
         return b;
 }
 
-int main(int args){
-	FILE *file = fopen("8086ext", "r");
-	FILE *fileOut = fopen("8086ext.out", "w");
+void getBaseName(char *name){
+
+	int i = 1;
+
+	for (; *(name + i) != '.' && *(name + i) != '\0'; i++);
+
+	name[i] = '\0';	
+}
+
+int main(int argc, char *argv[]){
+
+	char *fileName = argv[1];
+	char outFileName[100];
+	printf("File name: %s\n", fileName);
+	strcpy(outFileName, argv[1]);
+	getBaseName(outFileName);
+	strcat(outFileName, ".out");
+	printf("outFileName: %s\n", outFileName);
+
+
+	FILE *file = fopen(fileName, "r");
+	FILE *fileOut = fopen(outFileName, "w");
 
 	unsigned char buffer[1024] = {'\n'};
 	char byte1, byte2;
@@ -91,11 +111,13 @@ int main(int args){
 		printf("decoded: \n");
 		printf("opcode: %s\n", opcodes[opcode]);
 
+		// Direction 
 		if(d)
 			printf("d: from\n");
 		else
 			printf("d: to\n");
 
+		// Width
 		if(w){
 			printf("w: word\n");
 			regs[0] = "ax";
@@ -118,11 +140,14 @@ int main(int args){
 			regs[7] = "bh";
 		}
 
-
+		// addressing mode
 		printf("mod: %s\n", byte_to_binary(mod));
+
+		// register
 		printf("reg: %s\n", regs[reg]);
 
-		if(1)
+		// register or memory operand
+	 	if(1)
 			printf("rm: %s\n", regs[rm]);
 
 
@@ -138,7 +163,6 @@ int main(int args){
 	fclose(file);
 	fclose(fileOut);
 
-	printf("%s\n", buffer);
 	printf("End of sim\n");
 
 	return 0;
