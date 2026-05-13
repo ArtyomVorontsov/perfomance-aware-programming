@@ -75,6 +75,8 @@ int main(int argc, char *argv[]){
 	     regMask= 0b00111000, 
 	     rmMask= 0b00000111;
 
+	fprintf(fileOut, "bits 16\n");
+
 
 	while(1){
 		byte1 = getc(file);
