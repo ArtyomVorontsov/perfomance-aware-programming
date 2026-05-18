@@ -359,8 +359,16 @@ int main(int argc, char *argv[])
 
 				printf("full instruction: \n");
 
-				printf("%s %s, %s\n", opcodes[opcode], regs[reg], rmOp);
-				fprintf(fileOut, "%s %s, %s\n", opcodes[opcode], regs[reg], rmOp);
+				if (d == 1)
+				{
+					printf("%s %s, %s\n", opcodes[opcode], regs[reg], rmOp);
+					fprintf(fileOut, "%s %s, %s\n", opcodes[opcode], regs[reg], rmOp);
+				}
+				else
+				{
+					printf("%s %s, %s\n", opcodes[opcode], rmOp, regs[reg]);
+					fprintf(fileOut, "%s %s, %s\n", opcodes[opcode], rmOp, regs[reg]);
+				}
 			}
 			else
 			{
