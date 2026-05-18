@@ -80,7 +80,11 @@ int main(int argc, char *argv[])
 				 reg = 0,
 				 rm = 0,
 				 data1 = 0,
-				 data2 = 0;
+				 data2 = 0,
+				 dispLo = 0,
+				 dispHi = 0;
+
+	uint64_t data = 0;
 
 	uint64_t opcodeMask = 0b11111111,
 			 dMask = 0,
@@ -89,7 +93,9 @@ int main(int argc, char *argv[])
 			 regMask = 0,
 			 rmMask = 0,
 			 data1Mask = 0,
-			 data2Mask = 0;
+			 data2Mask = 0,
+			 dispLoMask = 0,
+			 dispHiMask = 0;
 
 	fprintf(fileOut, "bits 16\n");
 
@@ -173,7 +179,6 @@ int main(int argc, char *argv[])
 
 		opcode = ((unsigned char)byte1);
 
-
 		// update masks depending on opcode retrieved
 		if ((opcode >> 2) == instructions[0][0][0])
 		{
@@ -185,6 +190,8 @@ int main(int argc, char *argv[])
 			modMask = instructions[0][1][3];
 			regMask = instructions[0][1][4];
 			rmMask = instructions[0][1][5];
+			dispLoMask = instructions[0][1][6];
+			dispHiMask = instructions[0][1][7];
 
 			byte2 = loadInstructionByte(file, buffer, &i);
 
@@ -195,8 +202,19 @@ int main(int argc, char *argv[])
 
 			if (mod == 0b01 || mod == 0b10)
 			{
-				byte3 = loadInstructionByte(file, buffer, &i);
-				byte4 = loadInstructionByte(file, buffer, &i);
+				// 8 bit dispacement
+				if (mod == 0b01)
+				{
+					byte3 = loadInstructionByte(file, buffer, &i);
+				}
+
+				// 16 bit dispacement
+				if (mod == 0b10)
+				{
+					byte3 = loadInstructionByte(file, buffer, &i);
+					byte4 = loadInstructionByte(file, buffer, &i);
+				}
+
 				uint64_t instruction = ((uint64_t)(uint8_t)byte1 << 40) |
 									   ((uint64_t)(uint8_t)byte2 << 32) |
 									   ((uint64_t)(uint8_t)byte3 << 24) |
@@ -219,6 +237,8 @@ int main(int argc, char *argv[])
 
 			reg = (instruction & regMask) >> 35;
 			rm = (instruction & rmMask) >> 32;
+			dispHi = (instruction & dispHiMask) >> 24;
+			dispLo = (instruction & dispLoMask) >> 16;
 
 			printf("register / memory to / from register\n");
 
@@ -271,20 +291,88 @@ int main(int argc, char *argv[])
 			printf("reg: %s\n", regs[reg]);
 
 			// register or memory operand
-			if (1)
-				printf("rm: %s\n", regs[rm]);
+			if (mod != 0b11)
+			{
+				char rmOp[100];
+				rmOp[0] = '\0';
+				char dispNumber[16];
 
-			printf("full instruction: \n");
-			printf("%s %s, %s\n", opcodes[opcode], regs[rm], regs[reg]);
-			fprintf(fileOut, "%s %s, %s\n", opcodes[opcode], regs[rm], regs[reg]);
+				switch (rm)
+				{
 
+				case 0b000:
+					strcat(rmOp, "[bx + si");
+					break;
+				case 0b001:
+					strcat(rmOp, "[bx + di");
+					break;
+				case 0b010:
+					strcat(rmOp, "[bp + si");
+					break;
+				case 0b011:
+					strcat(rmOp, "[bp + di");
+					break;
+				case 0b100:
+					strcat(rmOp, "[si");
+					break;
+				case 0b101:
+					strcat(rmOp, "[di");
+					break;
+				case 0b110:
+					strcat(rmOp, "[bp");
+					break;
+				case 0b111:
+					strcat(rmOp, "[bx");
+					break;
+
+				default:
+					break;
+				}
+
+				if (mod == 0b00)
+				{
+					strcat(rmOp, "]");
+				}
+				else
+				{
+
+					if (mod == 0b01)
+					{
+						sprintf(dispNumber, "%d", (signed)(int)dispLo);
+					}
+					else if (mod == 0b10)
+					{
+						sprintf(dispNumber, "%d", (signed)(int)((dispHi << 8) | dispLo));
+					}
+
+					if (dispNumber[0] == '0')
+					{
+						strcat(rmOp, "]");
+					}
+					else
+					{
+						strcat(strcat(strcat(rmOp, " + "), dispNumber), "]");
+					}
+				}
+
+				printf("full instruction: \n");
+
+				printf("%s %s, %s\n", opcodes[opcode], regs[reg], rmOp);
+				fprintf(fileOut, "%s %s, %s\n", opcodes[opcode], regs[reg], rmOp);
+			}
+			else
+			{
+
+				printf("full instruction: \n");
+				printf("%s %s, %s\n", opcodes[opcode], regs[rm], regs[reg]);
+				fprintf(fileOut, "%s %s, %s\n", opcodes[opcode], regs[rm], regs[reg]);
+			}
 			printf("================\n\n");
 		}
 		else if ((opcode >> 4) == instructions[1][0][0])
 		{
 			// immidiate to register
 			byte2 = loadInstructionByte(file, buffer, &i);
-			byte3 = loadInstructionByte(file, buffer, &i);
 
 			// register / memory to / from register
 			opcodeMask = instructions[1][1][0];
@@ -297,8 +385,17 @@ int main(int argc, char *argv[])
 			data2Mask = instructions[1][1][9];
 
 			uint64_t instruction = ((uint64_t)(uint8_t)byte1 << 40) |
-								   ((uint64_t)(uint8_t)byte2 << 32) |
-								   (uint64_t)(uint8_t)byte3 << 24;
+								   ((uint64_t)(uint8_t)byte2 << 32);
+
+			w = (instruction & wMask) >> 43;
+
+			if (w)
+			{
+				byte3 = loadInstructionByte(file, buffer, &i);
+				instruction = ((uint64_t)(uint8_t)byte1 << 40) |
+							  ((uint64_t)(uint8_t)byte2 << 32) |
+							  (uint64_t)(uint8_t)byte3 << 24;
+			}
 
 			printf("instruction: ");
 			printf("%s ", byte_to_binary(byte1));
@@ -321,6 +418,7 @@ int main(int argc, char *argv[])
 			printf("mod: %s\n", byte_to_binary(mod));
 			printf("reg: %s\n", byte_to_binary(reg));
 			printf("rm: %s\n", byte_to_binary(rm));
+			printf("data: %s\n", byte_to_binary(data));
 			printf("data1: %s\n", byte_to_binary(data1));
 			printf("data2: %s\n", byte_to_binary(data2));
 
@@ -345,6 +443,8 @@ int main(int argc, char *argv[])
 				regs[5] = "bp";
 				regs[6] = "si";
 				regs[7] = "di";
+
+				data = (data2 << 8) | data1;
 			}
 			else
 			{
@@ -357,6 +457,8 @@ int main(int argc, char *argv[])
 				regs[5] = "ch";
 				regs[6] = "dh";
 				regs[7] = "bh";
+
+				data = data1;
 			}
 
 			// addressing mode
@@ -370,8 +472,8 @@ int main(int argc, char *argv[])
 				printf("rm: %s\n", regs[rm]);
 
 			printf("full instruction: \n");
-			printf("%s %s, %d\n", opcodes[opcode], regs[reg], data1);
-			fprintf(fileOut, "%s %s, %d\n", opcodes[opcode], regs[reg], data1);
+			printf("%s %s, %d\n", opcodes[opcode], regs[reg], data);
+			fprintf(fileOut, "%s %s, %d\n", opcodes[opcode], regs[reg], data);
 
 			printf("================\n\n");
 		}
