@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	FILE *fileOut = fopen(outFileName, "w");
 
 	unsigned char buffer[1024] = {'\n'};
-	char byte1, byte2, byte3, byte4, byte5, byte6;
+	char byte1 = 0, byte2 = 0, byte3 = 0, byte4 = 0, byte5 = 0, byte6 = 0;
 	int i = 0;
 
 	char *opcodes[64],
@@ -215,17 +215,17 @@ int main(int argc, char *argv[])
 					byte4 = loadInstructionByte(file, buffer, &i);
 				}
 
-				uint64_t instruction = ((uint64_t)(uint8_t)byte1 << 40) |
-									   ((uint64_t)(uint8_t)byte2 << 32) |
-									   ((uint64_t)(uint8_t)byte3 << 24) |
-									   ((uint64_t)(uint8_t)byte4 << 16);
+				instruction = ((uint64_t)(uint8_t)byte1 << 40) |
+							  ((uint64_t)(uint8_t)byte2 << 32) |
+							  ((uint64_t)(uint8_t)byte3 << 24) |
+							  ((uint64_t)(uint8_t)byte4 << 16);
 			}
 
 			printf("instruction: ");
-			printf("%s ", byte_to_binary(byte1));
-			printf("%s ", byte_to_binary(byte2));
-			printf("%s ", byte_to_binary(byte3));
-			printf("%s ", byte_to_binary(byte4));
+			printf("%s ", byte_to_binary(instruction >> 40));
+			printf("%s ", byte_to_binary(instruction >> 32));
+			printf("%s ", byte_to_binary(instruction >> 24));
+			printf("%s ", byte_to_binary(instruction >> 16));
 			printf("%s ", byte_to_binary(0));
 			printf("%s ", byte_to_binary(0));
 			printf("\n");
@@ -237,8 +237,8 @@ int main(int argc, char *argv[])
 
 			reg = (instruction & regMask) >> 35;
 			rm = (instruction & rmMask) >> 32;
-			dispHi = (instruction & dispHiMask) >> 24;
-			dispLo = (instruction & dispLoMask) >> 16;
+			dispLo = (instruction & dispLoMask) >> 24;
+			dispHi = (instruction & dispHiMask) >> 16;
 
 			printf("register / memory to / from register\n");
 
@@ -248,6 +248,8 @@ int main(int argc, char *argv[])
 			printf("mod: %s\n", byte_to_binary(mod));
 			printf("reg: %s\n", byte_to_binary(reg));
 			printf("rm: %s\n", byte_to_binary(rm));
+			printf("dispLo: %s\n", byte_to_binary(dispLo));
+			printf("dispHi: %s\n", byte_to_binary(dispHi));
 
 			printf("\n");
 			printf("decoded: \n");
