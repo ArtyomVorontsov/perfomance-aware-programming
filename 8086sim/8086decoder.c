@@ -986,8 +986,10 @@ int main(int argc, char *argv[])
 		}
 		else if ((opcode >> 2) == instructions[3][0][0])
 		{
+			printf("Immidiate register\n");
 			// immidiate to register
 			byte2 = loadInstructionByte(file, buffer, &i);
+			byte3 = loadInstructionByte(file, buffer, &i);
 
 			// add
 			opcodeMask = instructions[3][1][0];
@@ -1001,22 +1003,25 @@ int main(int argc, char *argv[])
 			sMask = instructions[3][1][15];
 
 			uint64_t instruction = ((uint64_t)(uint8_t)byte1 << 40) |
-								   ((uint64_t)(uint8_t)byte2 << 32);
+								   ((uint64_t)(uint8_t)byte2 << 32) |
+								   (uint64_t)(uint8_t)byte3 << 24;
 
 			w = (instruction & wMask) >> 40;
 
 			if (w)
 			{
-				byte3 = loadInstructionByte(file, buffer, &i);
+				byte4 = loadInstructionByte(file, buffer, &i);
 				instruction = ((uint64_t)(uint8_t)byte1 << 40) |
 							  ((uint64_t)(uint8_t)byte2 << 32) |
-							  (uint64_t)(uint8_t)byte3 << 24;
+							  (uint64_t)(uint8_t)byte3 << 24 |
+							  (uint64_t)(uint8_t)byte4 << 16;
 			}
 
 			printf("instruction: ");
 			printf("%s ", byte_to_binary(byte1));
 			printf("%s ", byte_to_binary(byte2));
 			printf("%s ", byte_to_binary(byte3));
+			printf("%s ", byte_to_binary(byte4));
 			printf("\n");
 
 			opcode = (instruction & opcodeMask) >> 42;
@@ -1031,10 +1036,16 @@ int main(int argc, char *argv[])
 			{
 				data1Mask = instructions[3][1][10];
 				data2Mask = instructions[3][1][11];
+
+				data1 = (instruction & data1Mask) >> 24;
+				data2 = (instruction & data2Mask) >> 16;
 			}
 
-			if (mod == 0b11)
+			if (mod == 0b00)
 			{
+				data1Mask = instructions[3][1][10];
+				data2Mask = instructions[3][1][11];
+
 				data1 = (instruction & data1Mask) >> 24;
 				data2 = (instruction & data2Mask) >> 16;
 			}
@@ -1099,15 +1110,97 @@ int main(int argc, char *argv[])
 			if (1)
 				printf("rm: %s\n", regs[rm]);
 
-			printf("full instruction: \n");
-			printf("opcodes %d\n", opcode);
+			// register or memory operand
+			if (mod != 0b11)
 
-			printf("%s %s, %d\n", opcodes[opcode], regs[rm], data);
-			fprintf(fileOut, "%s %s, %d\n", opcodes[opcode], regs[rm], data);
+			{
+				char rmOp[100];
+				rmOp[0] = '\0';
+				char dispNumber[16];
 
+				switch (rm)
+				{
+
+				case 0b000:
+					strcat(rmOp, "[bx + si");
+					break;
+				case 0b001:
+					strcat(rmOp, "[bx + di");
+					break;
+				case 0b010:
+					strcat(rmOp, "[bp + si");
+					break;
+				case 0b011:
+					strcat(rmOp, "[bp + di");
+					break;
+				case 0b100:
+					strcat(rmOp, "[si");
+					break;
+				case 0b101:
+					strcat(rmOp, "[di");
+					break;
+				case 0b110:
+					strcat(rmOp, "[bp");
+					break;
+				case 0b111:
+					strcat(rmOp, "[bx");
+					break;
+
+				default:
+					break;
+				}
+
+				if (mod == 0b00)
+				{
+					strcat(rmOp, "]");
+				}
+				else
+				{
+
+					if (mod == 0b01)
+					{
+						sprintf(dispNumber, "%d", (signed)(int)dispLo);
+					}
+					else if (mod == 0b10)
+					{
+						sprintf(dispNumber, "%d", (signed)(int)((dispHi << 8) | dispLo));
+					}
+
+					if (dispNumber[0] == '0')
+					{
+						strcat(rmOp, "]");
+					}
+					else
+					{
+						strcat(strcat(strcat(rmOp, " + "), dispNumber), "]");
+					}
+				}
+
+				printf("full instruction: 1\n");
+
+				if (d == 1)
+				{
+					printf("%d\n", opcode);
+					printf("%s %d, %s\n", opcodes[opcode], data, rmOp);
+					fprintf(fileOut, "%s %d, %s\n", opcodes[opcode], data, rmOp);
+				}
+				else
+				{
+					printf("%s %s, %d\n", opcodes[opcode], rmOp, data);
+					fprintf(fileOut, "%s %s, %d\n", opcodes[opcode], rmOp, data);
+				}
+			}
+			else
+			{
+
+				printf("opcodes %d\n", opcode);
+				printf("full instruction: \n");
+				printf("%s %s, %d\n", opcodes[opcode], regs[rm], data);
+				fprintf(fileOut, "%s %s, %d\n", opcodes[opcode], regs[rm], data);
+			}
 			printf("================\n\n");
 		}
-		}
+	}
 
 	fclose(file);
 	fclose(fileOut);

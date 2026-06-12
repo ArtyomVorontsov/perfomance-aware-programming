@@ -8,7 +8,7 @@ BASE_FILENAME="${BASE_FILENAME%.*}"
 DIR="${FILEPATH%/*}"
 
 nasm $FILEPATH && \
-gcc -g 8086sim.c && \
+gcc -g 8086decoder.c && \
 ./a.out "$DIR/$BASE_FILENAME" && \
 # cleanup comments 
 cat $FILEPATH > "$DIR/temp" && \
