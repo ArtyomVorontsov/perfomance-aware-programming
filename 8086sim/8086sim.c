@@ -224,7 +224,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    printf("File name provided, file name: %s\n", fileName);
     FILE *file = fopen(fileName, "r");
 
     char memory[1024][64];
@@ -294,7 +293,7 @@ int main(int argc, char *argv[])
     char secondOperand[4];
     int operation;
 
-    printf("\n");
+    // printf("\n");
     for (int i = 0; i <= amountOfInstructions; i++)
     {
         operation = getOperationCode(memory[i]);
@@ -328,7 +327,7 @@ int main(int argc, char *argv[])
             // Immidiate value to register move
             if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
             {
-                printf("%s ; %s:%d->%d\n", memory[i], firstOperand, registers[registerCodeForFirstOperand], atoi(secondOperand)); 
+                printf("%s ; %s:0x%X->0x%X \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], atoi(secondOperand)); 
                 registers[registerCodeForFirstOperand] = atoi(secondOperand);
             }
         }
@@ -339,8 +338,10 @@ int main(int argc, char *argv[])
     // print registers
     printf("Final registers:\n");
 
+    // TODO: make this as hash table
     for (int i = 0; i < 8; i++)
     {
+        printf("    ");
         switch (i)
         {
 
@@ -373,9 +374,9 @@ int main(int argc, char *argv[])
             break;
         }
 
-        printf(":");
+        printf(": ");
 
-        printf(" (%d)\n", registers[i]);
+        printf("0x%.4X (%d)\n", registers[i], registers[i]);
     }
 
     return 0;
