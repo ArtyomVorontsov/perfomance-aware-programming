@@ -213,6 +213,57 @@ int getRegisterCode(char *operand)
     return operandCode;
 }
 
+void getRegisterName(int code, char *buffer)
+{
+    switch (code)
+    {
+
+    case 0:
+        buffer[0] = 'a';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 1:
+        buffer[0] = 'b';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 2:
+        buffer[0] = 'c';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 3:
+        buffer[0] = 'd';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 4:
+        buffer[0] = 's';
+        buffer[1] = 'p';
+        buffer[2] = '\0';
+        break;
+    case 5:
+        buffer[0] = 'b';
+        buffer[1] = 'p';
+        buffer[2] = '\0';
+        break;
+    case 6:
+        buffer[0] = 's';
+        buffer[1] = 'i';
+        buffer[2] = '\0';
+        break;
+    case 7:
+        buffer[0] = 'd';
+        buffer[1] = 'i';
+        buffer[2] = '\0';
+        break;
+
+    default:
+        break;
+    }
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -285,28 +336,24 @@ int main(int argc, char *argv[])
 
     int amountOfInstructions = i;
 
-    // printMemory(memory, amountOfInstructions);
-
     // Handle operations
 
     char firstOperand[4];
     char secondOperand[4];
     int operation;
 
-    // printf("\n");
     for (int i = 0; i <= amountOfInstructions; i++)
     {
         operation = getOperationCode(memory[i]);
 
-
-        // mov ax, 1 ; ax:0x0->0x1 
-        // mov bx, 2 ; bx:0x0->0x2 
-        // mov cx, 3 ; cx:0x0->0x3 
-        // mov dx, 4 ; dx:0x0->0x4 
-        // mov sp, 5 ; sp:0x0->0x5 
-        // mov bp, 6 ; bp:0x0->0x6 
-        // mov si, 7 ; si:0x0->0x7 
-        // mov di, 8 ; di:0x0->0x8 
+        // mov ax, 1 ; ax:0x0->0x1
+        // mov bx, 2 ; bx:0x0->0x2
+        // mov cx, 3 ; cx:0x0->0x3
+        // mov dx, 4 ; dx:0x0->0x4
+        // mov sp, 5 ; sp:0x0->0x5
+        // mov bp, 6 ; bp:0x0->0x6
+        // mov si, 7 ; si:0x0->0x7
+        // mov di, 8 ; di:0x0->0x8
 
         // handle mov operation
         if (operation == 0)
@@ -327,52 +374,22 @@ int main(int argc, char *argv[])
             // Immidiate value to register move
             if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
             {
-                printf("%s ; %s:0x%X->0x%X \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], atoi(secondOperand)); 
+                printf("%s ; %s:0x%X->0x%X \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], atoi(secondOperand));
                 registers[registerCodeForFirstOperand] = atoi(secondOperand);
             }
         }
     }
     printf("\n");
 
-
     // print registers
     printf("Final registers:\n");
 
-    // TODO: make this as hash table
     for (int i = 0; i < 8; i++)
     {
         printf("    ");
-        switch (i)
-        {
-
-        case 0:
-            printf("ax");
-            break;
-        case 1:
-            printf("bx");
-            break;
-        case 2:
-            printf("cx");
-            break;
-        case 3:
-            printf("dx");
-            break;
-        case 4:
-            printf("sp");
-            break;
-        case 5:
-            printf("bp");
-            break;
-        case 6:
-            printf("si");
-            break;
-        case 7:
-            printf("di");
-            break;
-
-        default:
-            break;
-        }
+        char buffer[3];
+        getRegisterName(i, buffer);
+        printf("%s", buffer);
 
         printf(": ");
 
