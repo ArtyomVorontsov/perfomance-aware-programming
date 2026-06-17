@@ -368,6 +368,7 @@ int main(int argc, char *argv[])
             // Register to register move
             if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand != -1)
             {
+                printf("%s ; %s:0x%X->0x%X \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForSecondOperand]);
                 registers[registerCodeForFirstOperand] = registers[registerCodeForSecondOperand];
             }
 
