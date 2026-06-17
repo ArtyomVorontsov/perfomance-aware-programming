@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
+#include <stdlib.h>
 
 void printMemory(char memory[1024][64], int limit)
 {
@@ -12,61 +13,6 @@ void printMemory(char memory[1024][64], int limit)
 
         i++;
     }
-}
-
-int atoi(char *c)
-{
-    char a[10];
-    strcpy(a, c);
-    int i = 0;
-    int numberLength = 0;
-    int negativeMultiplier = 1;
-    int number = 0;
-
-    // check for negative number
-    if (a[0] == '-')
-    {
-        negativeMultiplier = -1;
-
-        int i = 1;
-        while (1)
-        {
-            if (a[i] == '\0')
-            {
-                break;
-            }
-            a[i - 1] = a[i];
-            i++;
-        }
-        a[i - 1] = '\0';
-    }
-
-    // get number length
-    i = 0;
-    while (1)
-    {
-        if (a[i] == '\0')
-        {
-            break;
-        }
-
-        numberLength++;
-        i++;
-    }
-
-    // transform ascii to int
-    int j = numberLength;
-
-    i = 0;
-    while (j != 0)
-    {
-        number += (a[j - 1] - '0') * (int)pow(10, i);
-
-        j--;
-        i++;
-    }
-
-    return number * negativeMultiplier;
 }
 
 int getOperationCode(char *instruction)
@@ -338,8 +284,11 @@ int main(int argc, char *argv[])
 
     // Handle operations
 
-    char firstOperand[4];
-    char secondOperand[4];
+    char firstOperand[7];
+    firstOperand[6] = '\0';
+    char secondOperand[7];
+    secondOperand[6] = '\0';
+
     int operation;
 
     for (int i = 0; i <= amountOfInstructions; i++)
@@ -375,8 +324,10 @@ int main(int argc, char *argv[])
             // Immidiate value to register move
             if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
             {
-                printf("%s ; %s:0x%X->0x%X \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], atoi(secondOperand));
-                registers[registerCodeForFirstOperand] = atoi(secondOperand);
+                char *endptr;
+                int secondOperandAsInt = (int)strtol(secondOperand, &endptr, 0);
+                printf("mov %s, %d ; %s:0x%X->0x%X \n", firstOperand, secondOperandAsInt, firstOperand, registers[registerCodeForFirstOperand], secondOperandAsInt);
+                registers[registerCodeForFirstOperand] = secondOperandAsInt;
             }
         }
     }
