@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 void printMemory(char memory[1024][64], int limit)
 {
@@ -19,6 +20,9 @@ int getOperationCode(char *instruction)
 {
     /* operation codes
     mov - 0
+    add - 1
+    sub - 2
+    cmp - 3
     */
     char operationName[4];
     operationName[3] = '\0';
@@ -40,6 +44,21 @@ int getOperationCode(char *instruction)
     if (strcmp(operationName, "mov") == 0)
     {
         return 0;
+    }
+
+    if (strcmp(operationName, "add") == 0)
+    {
+        return 1;
+    }
+
+    if (strcmp(operationName, "sub") == 0)
+    {
+        return 2;
+    }
+
+    if (strcmp(operationName, "cmp") == 0)
+    {
+        return 3;
     }
 
     return -1;
@@ -115,7 +134,6 @@ void getSecondOperand(char *instruction, char *secondOperand)
         i++;
     }
 
-    j++;
     secondOperand[j] = '\0';
 }
 
@@ -236,7 +254,14 @@ int main(int argc, char *argv[])
         si - 6
         di - 7
     */
-    int registers[8];
+    uint16_t registers[8];
+
+    /*
+       Flag register codes
+       zf - 0
+       sf - 1
+   */
+    uint16_t flagRegisters[2];
 
     // read instructions into memory
     int i = 0;
@@ -285,9 +310,13 @@ int main(int argc, char *argv[])
     // Handle operations
 
     char firstOperand[7];
-    firstOperand[6] = '\0';
     char secondOperand[7];
-    secondOperand[6] = '\0';
+
+    for (int i = 0; i < 7; i++)
+    {
+        firstOperand[i] = '\0';
+        secondOperand[i] = '\0';
+    }
 
     int operation;
 
@@ -317,7 +346,7 @@ int main(int argc, char *argv[])
             // Register to register move
             if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand != -1)
             {
-                printf("%s ; %s:0x%X->0x%X \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForSecondOperand]);
+                printf("%s ; %s:0x%x->0x%x \n", memory[i], firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForSecondOperand]);
                 registers[registerCodeForFirstOperand] = registers[registerCodeForSecondOperand];
             }
 
@@ -325,10 +354,203 @@ int main(int argc, char *argv[])
             if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
             {
                 char *endptr;
-                int secondOperandAsInt = (int)strtol(secondOperand, &endptr, 0);
-                printf("mov %s, %d ; %s:0x%X->0x%X \n", firstOperand, secondOperandAsInt, firstOperand, registers[registerCodeForFirstOperand], secondOperandAsInt);
+                uint16_t secondOperandAsInt = (int)strtol(secondOperand, &endptr, 0);
+                printf("mov %s, %d ; %s:0x%x->0x%x \n", firstOperand, secondOperandAsInt, firstOperand, registers[registerCodeForFirstOperand], secondOperandAsInt);
                 registers[registerCodeForFirstOperand] = secondOperandAsInt;
             }
+        }
+
+        // handle add operation
+        if (operation == 1)
+        {
+            uint16_t flagRegistersInitialState[2];
+            flagRegistersInitialState[0] = flagRegisters[0];
+            flagRegistersInitialState[1] = flagRegisters[1];
+
+            getFirstOperand(memory[i], firstOperand);
+            getSecondOperand(memory[i], secondOperand);
+
+            int registerCodeForFirstOperand = getRegisterCode(firstOperand);
+            int registerCodeForSecondOperand = getRegisterCode(secondOperand);
+
+            // Register to register add
+            if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand != -1)
+            {
+                printf("%s ; %s:0x%x->0x%x ", memory[i], firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForFirstOperand] + registers[registerCodeForSecondOperand]);
+                registers[registerCodeForFirstOperand] = registers[registerCodeForFirstOperand] + registers[registerCodeForSecondOperand];
+
+                flagRegisters[0] = (registers[registerCodeForFirstOperand]) == 0;
+                flagRegisters[1] = !!(registers[registerCodeForFirstOperand] & 0b1000000000000000);
+            }
+
+            // Immidiate value to register add
+            if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
+            {
+                char *endptr;
+                uint16_t secondOperandAsInt = (int)strtol(secondOperand, &endptr, 0);
+                printf("add %s, %d ; %s:0x%x->0x%x ", firstOperand, secondOperandAsInt, firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForFirstOperand] + secondOperandAsInt);
+                registers[registerCodeForFirstOperand] = registers[registerCodeForFirstOperand] + secondOperandAsInt;
+
+                flagRegisters[0] = (registers[registerCodeForFirstOperand]) == 0;
+                flagRegisters[1] = !!(registers[registerCodeForFirstOperand] & 0b1000000000000000);
+            }
+
+            if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
+            {
+                printf("flags:");
+
+                if (flagRegistersInitialState[0])
+                {
+                    printf("Z");
+                }
+
+                if (flagRegistersInitialState[1])
+                {
+                    printf("S");
+                }
+
+                printf("->");
+
+                if (flagRegisters[0])
+                {
+                    printf("Z");
+                }
+
+                if (flagRegisters[1])
+                {
+                    printf("S");
+                }
+                printf(" ");
+            }
+            printf("\n");
+        }
+
+        // handle sub operation
+        if (operation == 2)
+        {
+            uint16_t flagRegistersInitialState[2];
+            flagRegistersInitialState[0] = flagRegisters[0];
+            flagRegistersInitialState[1] = flagRegisters[1];
+
+            getFirstOperand(memory[i], firstOperand);
+            getSecondOperand(memory[i], secondOperand);
+
+            int registerCodeForFirstOperand = getRegisterCode(firstOperand);
+            int registerCodeForSecondOperand = getRegisterCode(secondOperand);
+
+            // Register to register sub
+            if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand != -1)
+            {
+                printf("%s ; %s:0x%04x->0x%x ", memory[i], firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForFirstOperand] - registers[registerCodeForSecondOperand]);
+                registers[registerCodeForFirstOperand] = registers[registerCodeForFirstOperand] - registers[registerCodeForSecondOperand];
+
+                flagRegisters[0] = (registers[registerCodeForFirstOperand]) == 0;
+                flagRegisters[1] = !!(registers[registerCodeForFirstOperand] & 0b1000000000000000);
+            }
+
+            // Immidiate value to register sub
+            if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
+            {
+                char *endptr;
+                uint16_t secondOperandAsInt = (int)strtol(secondOperand, &endptr, 0);
+                printf("sub %s, %d ; %s:0x%x->0x%x ", firstOperand, secondOperandAsInt, firstOperand, registers[registerCodeForFirstOperand], registers[registerCodeForFirstOperand] - secondOperandAsInt);
+                registers[registerCodeForFirstOperand] = registers[registerCodeForFirstOperand] - secondOperandAsInt;
+
+                flagRegisters[0] = (registers[registerCodeForFirstOperand]) == 0;
+                flagRegisters[1] = !!(registers[registerCodeForFirstOperand] & 0b1000000000000000);
+            }
+
+            if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
+            {
+                printf("flags:");
+
+                if (flagRegistersInitialState[0])
+                {
+                    printf("Z");
+                }
+
+                if (flagRegistersInitialState[1])
+                {
+                    printf("S");
+                }
+
+                printf("->");
+
+                if (flagRegisters[0])
+                {
+                    printf("Z");
+                }
+
+                if (flagRegisters[1])
+                {
+                    printf("S");
+                }
+                printf(" ");
+            }
+            printf("\n");
+        }
+
+        // handle cmp operation
+        if (operation == 3)
+        {
+            uint16_t flagRegistersInitialState[2];
+            flagRegistersInitialState[0] = flagRegisters[0];
+            flagRegistersInitialState[1] = flagRegisters[1];
+
+            getFirstOperand(memory[i], firstOperand);
+            getSecondOperand(memory[i], secondOperand);
+
+            int registerCodeForFirstOperand = getRegisterCode(firstOperand);
+            int registerCodeForSecondOperand = getRegisterCode(secondOperand);
+
+            // Register to register cmp
+            if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand != -1)
+            {
+                printf("%s ; ", memory[i]);
+
+                flagRegisters[0] = (registers[registerCodeForFirstOperand]) == 0;
+                flagRegisters[1] = !!(registers[registerCodeForFirstOperand] & 0b1000000000000000);
+            }
+
+            // Immidiate value to register cmp
+            if (registerCodeForFirstOperand != -1 && registerCodeForSecondOperand == -1)
+            {
+                char *endptr;
+                uint16_t secondOperandAsInt = (int)strtol(secondOperand, &endptr, 0);
+                printf("%s ; ", memory[i]);
+
+                flagRegisters[0] = (registers[registerCodeForFirstOperand] - secondOperandAsInt) == 0;
+                flagRegisters[1] = !!(registers[registerCodeForFirstOperand] & 0b1000000000000000);
+            }
+
+            if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
+            {
+                printf("flags:");
+
+                if (flagRegistersInitialState[0])
+                {
+                    printf("Z");
+                }
+
+                if (flagRegistersInitialState[1])
+                {
+                    printf("S");
+                }
+
+                printf("->");
+
+                if (flagRegisters[0])
+                {
+                    printf("Z");
+                }
+
+                if (flagRegisters[1])
+                {
+                    printf("S");
+                }
+                printf(" ");
+            }
+            printf("\n");
         }
     }
     printf("\n");
@@ -338,14 +560,28 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < 8; i++)
     {
-        printf("    ");
-        char buffer[3];
-        getRegisterName(i, buffer);
-        printf("%s", buffer);
+        if (registers[i])
+        {
+            printf("      ");
+            char buffer[3];
+            getRegisterName(i, buffer);
+            printf("%s", buffer);
 
-        printf(": ");
+            printf(": ");
 
-        printf("0x%.4X (%d)\n", registers[i], registers[i]);
+            printf("0x%.4x (%d)\n", registers[i], registers[i]);
+        }
+    }
+
+    printf("   flags: ");
+    if (flagRegisters[0])
+    {
+        printf("Z");
+    }
+
+    if (flagRegisters[1])
+    {
+        printf("S");
     }
 
     return 0;
