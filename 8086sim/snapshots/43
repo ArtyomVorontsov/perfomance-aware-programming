@@ -8,11 +8,12 @@ mov si, 7 ; si:0x0->0x7
 mov di, 8 ; di:0x0->0x8 
 
 Final registers:
-    ax: 0x0001 (1)
-    bx: 0x0002 (2)
-    cx: 0x0003 (3)
-    dx: 0x0004 (4)
-    sp: 0x0005 (5)
-    bp: 0x0006 (6)
-    si: 0x0007 (7)
-    di: 0x0008 (8)
+      ax: 0x0001 (1)
+      bx: 0x0002 (2)
+      cx: 0x0003 (3)
+      dx: 0x0004 (4)
+      sp: 0x0005 (5)
+      bp: 0x0006 (6)
+      si: 0x0007 (7)
+      di: 0x0008 (8)
+   flags: 
