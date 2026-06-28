@@ -1,5 +1,6 @@
 #!/bin/bash
 
+LD_LIBRARY_PATH=./shared:$LD_LIBRARY_PATH
 FILEPATH=$1 
 RUN_CLEANUP_OPTION=$2 
 
@@ -10,7 +11,7 @@ DIR="${FILEPATH%/*}"
 echo $BASE_FILENAME 
 echo $DIR 
 
-gcc -g 8086sim.c -lm && \
+g++ -g 8086sim.cpp -lm -L./shared -lsim86_lib
 ./a.out "$DIR/$BASE_FILENAME.asm" > "temp" && \
 echo "Comparison" && \
 diff "temp" "./snapshots/$BASE_FILENAME" && \

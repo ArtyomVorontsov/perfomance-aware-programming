@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <stdio.h>
+
+#include "./shared/sim86_shared.h"
+
 void printMemory(char memory[1024][64], int limit)
 {
     int i = 0;
@@ -95,7 +99,7 @@ void getFirstOperand(char *instruction, char *firstOperand)
     }
     j++;
 
-    firstOperand = '\0';
+    firstOperand[j] = '\0';
 }
 
 void getSecondOperand(char *instruction, char *secondOperand)
@@ -260,8 +264,9 @@ int main(int argc, char *argv[])
        Flag register codes
        zf - 0
        sf - 1
+       ip - 2
    */
-    uint16_t flagRegisters[2];
+    uint16_t flagRegisters[3];
 
     // read instructions into memory
     int i = 0;
@@ -320,9 +325,18 @@ int main(int argc, char *argv[])
 
     int operation;
 
+    // Execute instructions
     for (int i = 0; i <= amountOfInstructions; i++)
     {
+
+        // very stupid way to do simulation, but I messed up from the start
+        // so let it be
+
+        instruction Decoded;
+        Sim86_Decode8086Instruction(sizeof(memory[i]), (u8 *)memory[i], &Decoded);
+
         operation = getOperationCode(memory[i]);
+        registers[2] += Decoded.Size;
 
         // mov ax, 1 ; ax:0x0->0x1
         // mov bx, 2 ; bx:0x0->0x2
