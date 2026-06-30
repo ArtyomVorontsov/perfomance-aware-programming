@@ -259,6 +259,11 @@ int main(int argc, char *argv[])
         di - 7
     */
     uint16_t registers[8];
+    // init as zero
+    for (int i = 0; i < 8; i++)
+    {
+        registers[i] = 0x0;
+    }
 
     /*
        Flag register codes
@@ -275,6 +280,56 @@ int main(int argc, char *argv[])
 
         bool endOfFile = false;
         bool emptyLine = false;
+
+        // skip comments
+        char c = getc(file);
+        if (c == ';')
+        {
+            while (c != '\n')
+            {
+                c = getc(file);
+            }
+
+            continue;
+        }
+        ungetc(c, file);
+
+        // skip empty lines
+        c = getc(file);
+        if (c == '\n')
+        {
+            continue;
+        }
+        ungetc(c, file);
+
+        // skip bits directive
+        // madness, I know, should be done as proper finite automata at least
+        c = getc(file);
+        if (c == 'b')
+        {
+            c = getc(file);
+            if (c == 'i')
+            {
+                c = getc(file);
+                if (c == 't')
+                {
+                    c = getc(file);
+                    if (c == 's')
+                    {
+                        while (c != '\n')
+                        {
+                            c = getc(file);
+                        }
+
+                        continue;
+                    }
+                    ungetc(c, file);
+                }
+                ungetc(c, file);
+            }
+            ungetc(c, file);
+        }
+        ungetc(c, file);
 
         // read and store instruction
         int j = 0;
