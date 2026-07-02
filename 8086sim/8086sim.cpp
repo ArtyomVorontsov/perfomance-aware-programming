@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
     int Offset = 0;
     // Execute instructions
-    for (int i = 0; *(memory2 + Offset) != 0x00; i++)
+    for (; *(memory2 + Offset) != 0x00;)
     {
 
         // very stupid way to do simulation, but I messed up from the start
@@ -222,7 +222,8 @@ int main(int argc, char *argv[])
             operation != Op_mov &&
             operation != Op_add &&
             operation != Op_sub &&
-            operation != Op_cmp)
+            operation != Op_cmp &&
+            operation != Op_jne)
         {
             // printf("Operation %d is not supported", operation);
             continue;
@@ -390,7 +391,7 @@ int main(int argc, char *argv[])
                        secondRegisterNameBuffer,
                        firstRegisterNameBuffer,
                        registers[firstOperandValue],
-                       (uint16_t) (registers[firstOperandValue] - registers[secondOperandValue]));
+                       (uint16_t)(registers[firstOperandValue] - registers[secondOperandValue]));
                 registers[firstOperandValue] = registers[firstOperandValue] - registers[secondOperandValue];
 
                 flagRegisters[0] = (registers[firstOperandValue]) == 0;
@@ -507,6 +508,24 @@ int main(int argc, char *argv[])
                 printf(" ");
             }
             printf("\n");
+        }
+
+        // handle jne operation
+        if (operation == Op_jne)
+        {
+
+            int16_t fov = Decoded.Operands[0].Register.Index;
+
+            printf("jne $%d ", fov + Decoded.Size);
+
+            if (flagRegisters[0] == 0)
+            {
+                printf("; ip:0x%x->0x%x \n", ipRegisterPrevValue, flagRegisters[2] + fov);
+                flagRegisters[2] = flagRegisters[2] + fov;
+                Offset = flagRegisters[2];
+            } else {
+                printf("; ip:0x%x->0x%x \n", ipRegisterPrevValue, flagRegisters[2]);
+            }
         }
     }
     printf("\n");
