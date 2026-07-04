@@ -9,56 +9,10 @@
 
 #include "./shared/sim86_shared.h"
 
-void getRegisterName(int code, char *buffer)
-{
-    switch (code)
-    {
-
-    case 1:
-        buffer[0] = 'a';
-        buffer[1] = 'x';
-        buffer[2] = '\0';
-        break;
-    case 2:
-        buffer[0] = 'b';
-        buffer[1] = 'x';
-        buffer[2] = '\0';
-        break;
-    case 3:
-        buffer[0] = 'c';
-        buffer[1] = 'x';
-        buffer[2] = '\0';
-        break;
-    case 4:
-        buffer[0] = 'd';
-        buffer[1] = 'x';
-        buffer[2] = '\0';
-        break;
-    case 5:
-        buffer[0] = 's';
-        buffer[1] = 'p';
-        buffer[2] = '\0';
-        break;
-    case 6:
-        buffer[0] = 'b';
-        buffer[1] = 'p';
-        buffer[2] = '\0';
-        break;
-    case 7:
-        buffer[0] = 's';
-        buffer[1] = 'i';
-        buffer[2] = '\0';
-        break;
-    case 8:
-        buffer[0] = 'd';
-        buffer[1] = 'i';
-        buffer[2] = '\0';
-        break;
-
-    default:
-        break;
-    }
-}
+void getRegisterName(int code, char *buffer);
+void printFlagChanges(uint16_t flagRegisters[3], uint16_t flagRegistersInitialState[3]);
+void printIpRegisterChanges(uint16_t ipRegisterCurrentValue, uint16_t ipRegisterPrevValue);
+void printRegistersFinalState(uint16_t registers[9], uint16_t flagRegisters[3]);
 
 int main(int argc, char *argv[])
 {
@@ -177,7 +131,7 @@ int main(int argc, char *argv[])
                 registers[Decoded.Operands[0].Register.Index] = secondOperandRegisterIndex;
             }
 
-            printf("ip:0x%x->0x%x ", ipRegisterPrevValue, flagRegisters[2]);
+            printIpRegisterChanges(flagRegisters[2], ipRegisterPrevValue);
             printf("\n");
         }
 
@@ -224,35 +178,8 @@ int main(int argc, char *argv[])
                 flagRegisters[1] = !!(registers[firstOperandRegisterIndex] & 0b1000000000000000);
             }
 
-            printf("ip:0x%x->0x%x ", ipRegisterPrevValue, flagRegisters[2]);
-
-            if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
-            {
-                printf("flags:");
-
-                if (flagRegistersInitialState[0])
-                {
-                    printf("Z");
-                }
-
-                if (flagRegistersInitialState[1])
-                {
-                    printf("S");
-                }
-
-                printf("->");
-
-                if (flagRegisters[0])
-                {
-                    printf("Z");
-                }
-
-                if (flagRegisters[1])
-                {
-                    printf("S");
-                }
-                printf(" ");
-            }
+            printIpRegisterChanges(flagRegisters[2], ipRegisterPrevValue);
+            printFlagChanges(flagRegisters, flagRegistersInitialState);
 
             printf("\n");
         }
@@ -300,35 +227,8 @@ int main(int argc, char *argv[])
                 flagRegisters[1] = !!(registers[firstOperandRegisterIndex] & 0b1000000000000000);
             }
 
-            printf("ip:0x%x->0x%x ", ipRegisterPrevValue, flagRegisters[2]);
-
-            if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
-            {
-                printf("flags:");
-
-                if (flagRegistersInitialState[0])
-                {
-                    printf("Z");
-                }
-
-                if (flagRegistersInitialState[1])
-                {
-                    printf("S");
-                }
-
-                printf("->");
-
-                if (flagRegisters[0])
-                {
-                    printf("Z");
-                }
-
-                if (flagRegisters[1])
-                {
-                    printf("S");
-                }
-                printf(" ");
-            }
+            printIpRegisterChanges(flagRegisters[2], ipRegisterPrevValue);
+            printFlagChanges(flagRegisters, flagRegistersInitialState);
 
             printf("\n");
         }
@@ -365,33 +265,9 @@ int main(int argc, char *argv[])
                 flagRegisters[1] = !!(registers[firstOperandRegisterIndex] & 0b1000000000000000);
             }
 
-            if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
-            {
-                printf("flags:");
+            printIpRegisterChanges(flagRegisters[2], ipRegisterPrevValue);
+            printFlagChanges(flagRegisters, flagRegistersInitialState);
 
-                if (flagRegistersInitialState[0])
-                {
-                    printf("Z");
-                }
-
-                if (flagRegistersInitialState[1])
-                {
-                    printf("S");
-                }
-
-                printf("->");
-
-                if (flagRegisters[0])
-                {
-                    printf("Z");
-                }
-
-                if (flagRegisters[1])
-                {
-                    printf("S");
-                }
-                printf(" ");
-            }
             printf("\n");
         }
 
@@ -416,7 +292,100 @@ int main(int argc, char *argv[])
         }
     }
     printf("\n");
+    printRegistersFinalState(registers, flagRegisters);
 
+    return 0;
+}
+
+void printFlagChanges(uint16_t flagRegisters[3], uint16_t flagRegistersInitialState[3])
+{
+    if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
+    {
+        printf("flags:");
+
+        if (flagRegistersInitialState[0])
+        {
+            printf("Z");
+        }
+
+        if (flagRegistersInitialState[1])
+        {
+            printf("S");
+        }
+
+        printf("->");
+
+        if (flagRegisters[0])
+        {
+            printf("Z");
+        }
+
+        if (flagRegisters[1])
+        {
+            printf("S");
+        }
+        printf(" ");
+    }
+}
+
+void printIpRegisterChanges(uint16_t ipRegisterCurrentValue, uint16_t ipRegisterPrevValue)
+{
+    printf("ip:0x%x->0x%x ", ipRegisterPrevValue, ipRegisterCurrentValue);
+}
+
+void getRegisterName(int code, char *buffer)
+{
+    switch (code)
+    {
+
+    case 1:
+        buffer[0] = 'a';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 2:
+        buffer[0] = 'b';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 3:
+        buffer[0] = 'c';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 4:
+        buffer[0] = 'd';
+        buffer[1] = 'x';
+        buffer[2] = '\0';
+        break;
+    case 5:
+        buffer[0] = 's';
+        buffer[1] = 'p';
+        buffer[2] = '\0';
+        break;
+    case 6:
+        buffer[0] = 'b';
+        buffer[1] = 'p';
+        buffer[2] = '\0';
+        break;
+    case 7:
+        buffer[0] = 's';
+        buffer[1] = 'i';
+        buffer[2] = '\0';
+        break;
+    case 8:
+        buffer[0] = 'd';
+        buffer[1] = 'i';
+        buffer[2] = '\0';
+        break;
+
+    default:
+        break;
+    }
+}
+
+void printRegistersFinalState(uint16_t registers[9], uint16_t flagRegisters[3])
+{
     // print registers
     printf("Final registers:\n");
 
@@ -447,6 +416,4 @@ int main(int argc, char *argv[])
     {
         printf("S");
     }
-
-    return 0;
 }
