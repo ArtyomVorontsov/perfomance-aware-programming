@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
 
                 firstOperandRegisterIndex = Decoded.Operands[0].Register.Index;
                 uint32_t firstOperandRegisterTermIndex = Decoded.Operands[0].Address.Terms[1].Register.Index;
+                uint32_t firstOperandAddressDisplacement = Decoded.Operands[0].Address.Displacement;
                 char firstRegisterTermNameBuffer[3];
                 getRegisterName(firstOperandRegisterIndex, firstRegisterNameBuffer);
                 getRegisterName(firstOperandRegisterTermIndex, firstRegisterTermNameBuffer);
@@ -148,11 +149,34 @@ int main(int argc, char *argv[])
                 secondOperandRegisterIndex = Decoded.Operands[1].Register.Index;
                 getRegisterName(secondOperandRegisterIndex, secondRegisterNameBuffer);
 
-                printf("mov word [%s+%s], %s ; ",
-                       firstRegisterNameBuffer,
-                       firstRegisterTermNameBuffer,
-                       secondRegisterNameBuffer);
-                memory[registers[firstOperandRegisterIndex] + registers[firstOperandRegisterTermIndex]] = registers[secondOperandRegisterIndex];
+                if (firstOperandRegisterTermIndex)
+                {
+
+                    printf("mov word [%s+%s], %s ; ",
+                           firstRegisterNameBuffer,
+                           firstRegisterTermNameBuffer,
+                           secondRegisterNameBuffer);
+
+                    memory[registers[firstOperandRegisterIndex] + registers[firstOperandRegisterTermIndex]] = registers[secondOperandRegisterIndex];
+                }
+                else
+                {
+                    if (firstOperandAddressDisplacement)
+                    {
+                        printf("mov word [%s+%d], %s ; ",
+                               firstRegisterNameBuffer,
+                               firstOperandAddressDisplacement,
+                               secondRegisterNameBuffer);
+                    }
+                    else
+                    {
+                        printf("mov word [%s], %s ; ",
+                               firstRegisterNameBuffer,
+                               secondRegisterNameBuffer);
+                    }
+
+                    memory[registers[firstOperandRegisterIndex] + registers[firstOperandRegisterTermIndex]] = registers[secondOperandRegisterIndex];
+                }
             }
 
             // Store immidiate value into memory
@@ -476,7 +500,7 @@ int main(int argc, char *argv[])
             // Immidiate value to register cmp
             if (Decoded.Operands[0].Type == Operand_Register && Decoded.Operands[1].Type == Operand_Immediate)
             {
-                printf("cmp %s %d; ", firstRegisterNameBuffer, secondOperandRegisterIndex);
+                printf("cmp %s, %d ; ", firstRegisterNameBuffer, secondOperandRegisterIndex);
 
                 flagRegisters[0] = (registers[firstOperandRegisterIndex] - secondOperandRegisterIndex) == 0;
                 flagRegisters[1] = !!((registers[firstOperandRegisterIndex] - secondOperandRegisterIndex) & 0b1000000000000000);
