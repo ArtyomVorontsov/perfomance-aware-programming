@@ -13,6 +13,7 @@ void getRegisterName(int code, char *buffer);
 void printFlagChanges(uint16_t flagRegisters[3], uint16_t flagRegistersInitialState[3]);
 void printIpRegisterChanges(uint16_t ipRegisterCurrentValue, uint16_t ipRegisterPrevValue);
 void printRegistersFinalState(uint16_t registers[9], uint16_t flagRegisters[3]);
+void printRegisterChange(char *registerName, uint16_t initialValue, uint16_t currentValue);
 
 int main(int argc, char *argv[])
 {
@@ -104,12 +105,13 @@ int main(int argc, char *argv[])
                 getRegisterName(Decoded.Operands[0].Register.Index, firstRegisterNameBuffer);
                 getRegisterName(Decoded.Operands[1].Register.Index, secondRegisterNameBuffer);
 
-                printf("mov %s, %s ; %s:0x%x->0x%x ",
+                printf("mov %s, %s ; ",
                        firstRegisterNameBuffer,
-                       secondRegisterNameBuffer,
-                       firstRegisterNameBuffer,
-                       registers[Decoded.Operands[0].Register.Index],
-                       registers[Decoded.Operands[1].Register.Index]);
+                       secondRegisterNameBuffer);
+
+                printRegisterChange(firstRegisterNameBuffer,
+                                    registers[Decoded.Operands[0].Register.Index],
+                                    registers[Decoded.Operands[1].Register.Index]);
 
                 registers[Decoded.Operands[0].Register.Index] = registers[Decoded.Operands[1].Register.Index];
             }
@@ -121,14 +123,36 @@ int main(int argc, char *argv[])
                 secondOperandRegisterIndex = Decoded.Operands[1].Register.Index;
                 getRegisterName(Decoded.Operands[0].Register.Index, firstRegisterNameBuffer);
 
-                printf("mov %s, %d ; %s:0x%x->0x%x ",
+                printf("mov %s, %d ; ",
                        firstRegisterNameBuffer,
-                       secondOperandRegisterIndex,
-                       firstRegisterNameBuffer,
-                       registers[Decoded.Operands[0].Register.Index],
                        secondOperandRegisterIndex);
 
+                printRegisterChange(
+                    firstRegisterNameBuffer,
+                    registers[Decoded.Operands[0].Register.Index],
+                    secondOperandRegisterIndex);
+
                 registers[Decoded.Operands[0].Register.Index] = secondOperandRegisterIndex;
+            }
+
+            // Store register value to memory
+            if (Decoded.Operands[0].Type == Operand_Memory && Decoded.Operands[1].Type == Operand_Register)
+            {
+
+                firstOperandRegisterIndex = Decoded.Operands[0].Register.Index;
+                uint32_t firstOperandRegisterTermIndex = Decoded.Operands[0].Address.Terms[1].Register.Index;
+                char firstRegisterTermNameBuffer[3];
+                getRegisterName(firstOperandRegisterIndex, firstRegisterNameBuffer);
+                getRegisterName(firstOperandRegisterTermIndex, firstRegisterTermNameBuffer);
+
+                secondOperandRegisterIndex = Decoded.Operands[1].Register.Index;
+                getRegisterName(secondOperandRegisterIndex, secondRegisterNameBuffer);
+
+                printf("mov word [%s+%s], %s ; ",
+                       firstRegisterNameBuffer,
+                       firstRegisterTermNameBuffer,
+                       secondRegisterNameBuffer);
+                memory[registers[firstOperandRegisterIndex] + registers[firstOperandRegisterTermIndex]] = registers[secondOperandRegisterIndex];
             }
 
             // Store immidiate value into memory
@@ -164,25 +188,46 @@ int main(int argc, char *argv[])
                 secondOperandRegisterIndex = Decoded.Operands[1].Register.Index;
                 getRegisterName(secondOperandRegisterIndex, secondRegisterNameBuffer);
 
-                if (secondOperandRegisterIndex)
+                uint32_t secondOperandRegisterTermIndex = Decoded.Operands[1].Address.Terms[1].Register.Index;
+                char secondRegisterTermNameBuffer[3];
+                getRegisterName(secondOperandRegisterTermIndex, secondRegisterTermNameBuffer);
+
+                if (secondOperandRegisterIndex && secondOperandRegisterTermIndex)
                 {
-                    printf("mov %s, [%s+%d] ; %s:0x%x->0x%x ",
+                    printf("mov %s, [%s+%s] ; ",
                            firstRegisterNameBuffer,
                            secondRegisterNameBuffer,
-                           secondOperandAddressDisplacement,
+                           secondRegisterTermNameBuffer);
+
+                    printRegisterChange(firstRegisterNameBuffer,
+                                        registers[firstOperandRegisterIndex],
+                                        memory[registers[secondOperandRegisterIndex] + registers[secondOperandRegisterTermIndex]]);
+
+                    registers[firstOperandRegisterIndex] = memory[registers[secondOperandRegisterIndex] + registers[secondOperandRegisterTermIndex]];
+                }
+                else if (secondOperandRegisterIndex)
+                {
+                    printf("mov %s, [%s+%d] ; ",
                            firstRegisterNameBuffer,
-                           registers[firstOperandRegisterIndex],
-                           memory[registers[secondOperandRegisterIndex] + secondOperandAddressDisplacement]);
+                           secondRegisterNameBuffer,
+                           secondOperandAddressDisplacement);
+
+                    printRegisterChange(firstRegisterNameBuffer,
+                                        registers[firstOperandRegisterIndex],
+                                        memory[registers[secondOperandRegisterIndex] + secondOperandAddressDisplacement]);
+
                     registers[firstOperandRegisterIndex] = memory[registers[secondOperandRegisterIndex] + secondOperandAddressDisplacement];
                 }
                 else
                 {
-                    printf("mov %s, [+%d] ; %s:0x%x->0x%x ",
+                    printf("mov %s, [+%d] ; ",
                            firstRegisterNameBuffer,
-                           secondOperandAddressDisplacement,
-                           firstRegisterNameBuffer,
-                           registers[firstOperandRegisterIndex],
-                           memory[secondOperandAddressDisplacement]);
+                           secondOperandAddressDisplacement);
+
+                    printRegisterChange(firstRegisterNameBuffer,
+                                        registers[firstOperandRegisterIndex],
+                                        memory[secondOperandAddressDisplacement]);
+
                     registers[firstOperandRegisterIndex] = memory[secondOperandAddressDisplacement];
                 }
             }
@@ -207,12 +252,14 @@ int main(int argc, char *argv[])
             // Register to register add
             if (Decoded.Operands[0].Type == Operand_Register && Decoded.Operands[1].Type == Operand_Register)
             {
-                printf("add %s %s; %s:0x%x->0x%x ",
+                printf("add %s, %s ; ",
                        firstRegisterNameBuffer,
-                       secondRegisterNameBuffer,
-                       firstRegisterNameBuffer,
-                       registers[firstOperandRegisterIndex],
-                       registers[firstOperandRegisterIndex] + registers[secondOperandRegisterIndex]);
+                       secondRegisterNameBuffer);
+
+                printRegisterChange(firstRegisterNameBuffer,
+                                    registers[firstOperandRegisterIndex],
+                                    registers[firstOperandRegisterIndex] + registers[secondOperandRegisterIndex]);
+
                 registers[firstOperandRegisterIndex] = registers[firstOperandRegisterIndex] + registers[secondOperandRegisterIndex];
 
                 flagRegisters[0] = (registers[firstOperandRegisterIndex]) == 0;
@@ -222,12 +269,13 @@ int main(int argc, char *argv[])
             // Immidiate value to register add
             if (Decoded.Operands[0].Type == Operand_Register && Decoded.Operands[1].Type == Operand_Immediate)
             {
-                printf("add %s, %d ; %s:0x%x->0x%x ",
+                printf("add %s, %d ; ",
                        firstRegisterNameBuffer,
-                       secondOperandRegisterIndex,
-                       firstRegisterNameBuffer,
-                       registers[firstOperandRegisterIndex],
-                       registers[firstOperandRegisterIndex] + secondOperandRegisterIndex);
+                       secondOperandRegisterIndex);
+
+                printRegisterChange(firstRegisterNameBuffer,
+                                    registers[firstOperandRegisterIndex],
+                                    registers[firstOperandRegisterIndex] + secondOperandRegisterIndex);
                 registers[firstOperandRegisterIndex] = registers[firstOperandRegisterIndex] + secondOperandRegisterIndex;
 
                 flagRegisters[0] = (registers[firstOperandRegisterIndex]) == 0;
@@ -271,12 +319,14 @@ int main(int argc, char *argv[])
             // Immidiate value to register sub
             if (Decoded.Operands[0].Type == Operand_Register && Decoded.Operands[1].Type == Operand_Immediate)
             {
-                printf("sub %s, %d ; %s:0x%x->0x%x ",
+                printf("sub %s, %d ; ",
                        firstRegisterNameBuffer,
-                       secondOperandRegisterIndex,
-                       firstRegisterNameBuffer,
-                       registers[firstOperandRegisterIndex],
-                       registers[firstOperandRegisterIndex] - secondOperandRegisterIndex);
+                       secondOperandRegisterIndex);
+
+                printRegisterChange(firstRegisterNameBuffer,
+                                    registers[firstOperandRegisterIndex],
+                                    registers[firstOperandRegisterIndex] - secondOperandRegisterIndex);
+
                 registers[firstOperandRegisterIndex] = registers[firstOperandRegisterIndex] - secondOperandRegisterIndex;
 
                 flagRegisters[0] = (registers[firstOperandRegisterIndex]) == 0;
@@ -308,8 +358,8 @@ int main(int argc, char *argv[])
             {
                 printf("cmp %s, %s ; ", firstRegisterNameBuffer, secondRegisterNameBuffer);
 
-                flagRegisters[0] = (registers[firstOperandRegisterIndex]) == 0;
-                flagRegisters[1] = !!(registers[firstOperandRegisterIndex] & 0b1000000000000000);
+                flagRegisters[0] = (registers[firstOperandRegisterIndex] - registers[secondOperandRegisterIndex]) == 0;
+                flagRegisters[1] = !!((registers[firstOperandRegisterIndex] - registers[secondOperandRegisterIndex]) & 0b1000000000000000);
             }
 
             // Immidiate value to register cmp
@@ -318,7 +368,7 @@ int main(int argc, char *argv[])
                 printf("cmp %s %d; ", firstRegisterNameBuffer, secondOperandRegisterIndex);
 
                 flagRegisters[0] = (registers[firstOperandRegisterIndex] - secondOperandRegisterIndex) == 0;
-                flagRegisters[1] = !!(registers[firstOperandRegisterIndex] & 0b1000000000000000);
+                flagRegisters[1] = !!((registers[firstOperandRegisterIndex] - secondOperandRegisterIndex) & 0b1000000000000000);
             }
 
             printIpRegisterChanges(flagRegisters[2], ipRegisterPrevValue);
@@ -355,7 +405,7 @@ int main(int argc, char *argv[])
 
 void printFlagChanges(uint16_t flagRegisters[3], uint16_t flagRegistersInitialState[3])
 {
-    if (flagRegisters[0] || flagRegisters[1] || flagRegistersInitialState[0] || flagRegistersInitialState[1])
+    if ((flagRegisters[0] != flagRegistersInitialState[0]) || (flagRegisters[1] != flagRegistersInitialState[1]))
     {
         printf("flags:");
 
@@ -471,5 +521,13 @@ void printRegistersFinalState(uint16_t registers[9], uint16_t flagRegisters[3])
     if (flagRegisters[1])
     {
         printf("S");
+    }
+}
+
+void printRegisterChange(char *registerName, uint16_t initialValue, uint16_t currentValue)
+{
+    if (initialValue != currentValue)
+    {
+        printf("%s:0x%x->0x%x ", registerName, initialValue, currentValue);
     }
 }
