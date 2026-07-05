@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    unsigned char memory[247] = {0};
+    unsigned char memory[64 * 1024] = {0};
 
     int i = 0;
 
@@ -129,6 +129,62 @@ int main(int argc, char *argv[])
                        secondOperandRegisterIndex);
 
                 registers[Decoded.Operands[0].Register.Index] = secondOperandRegisterIndex;
+            }
+
+            // Store immidiate value into memory
+            if (Decoded.Operands[0].Type == Operand_Memory && Decoded.Operands[1].Type == Operand_Immediate)
+            {
+
+                uint32_t firstOperandAddressDisplacement = Decoded.Operands[0].Address.Displacement;
+                firstOperandRegisterIndex = Decoded.Operands[0].Register.Index;
+                getRegisterName(firstOperandRegisterIndex, firstRegisterNameBuffer);
+
+                secondOperandRegisterIndex = Decoded.Operands[1].Register.Index;
+
+                if (firstOperandRegisterIndex)
+                {
+                    printf("mov word [%s+%d], %d ; ", firstRegisterNameBuffer, firstOperandAddressDisplacement, secondOperandRegisterIndex);
+                    memory[firstOperandAddressDisplacement + registers[firstOperandRegisterIndex]] = secondOperandRegisterIndex;
+                }
+                else
+                {
+                    printf("mov word [+%d], %d ; ", firstOperandAddressDisplacement, secondOperandRegisterIndex);
+                    memory[firstOperandAddressDisplacement] = secondOperandRegisterIndex;
+                }
+            }
+
+            // Load value into register from memory
+            if (Decoded.Operands[0].Type == Operand_Register && Decoded.Operands[1].Type == Operand_Memory)
+            {
+
+                uint32_t secondOperandAddressDisplacement = Decoded.Operands[1].Address.Displacement;
+                firstOperandRegisterIndex = Decoded.Operands[0].Register.Index;
+                getRegisterName(firstOperandRegisterIndex, firstRegisterNameBuffer);
+
+                secondOperandRegisterIndex = Decoded.Operands[1].Register.Index;
+                getRegisterName(secondOperandRegisterIndex, secondRegisterNameBuffer);
+
+                if (secondOperandRegisterIndex)
+                {
+                    printf("mov %s, [%s+%d] ; %s:0x%x->0x%x ",
+                           firstRegisterNameBuffer,
+                           secondRegisterNameBuffer,
+                           secondOperandAddressDisplacement,
+                           firstRegisterNameBuffer,
+                           registers[firstOperandRegisterIndex],
+                           memory[registers[secondOperandRegisterIndex] + secondOperandAddressDisplacement]);
+                    registers[firstOperandRegisterIndex] = memory[registers[secondOperandRegisterIndex] + secondOperandAddressDisplacement];
+                }
+                else
+                {
+                    printf("mov %s, [+%d] ; %s:0x%x->0x%x ",
+                           firstRegisterNameBuffer,
+                           secondOperandAddressDisplacement,
+                           firstRegisterNameBuffer,
+                           registers[firstOperandRegisterIndex],
+                           memory[secondOperandAddressDisplacement]);
+                    registers[firstOperandRegisterIndex] = memory[secondOperandAddressDisplacement];
+                }
             }
 
             printIpRegisterChanges(flagRegisters[2], ipRegisterPrevValue);
