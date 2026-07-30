@@ -4,19 +4,33 @@
 #define IS_DEV true
 #define ENTRY_AMOUNT 100
 
+typedef struct Entry Entry;
+typedef struct Entries Entries;
+
+struct Entries
+{
+    int count;
+    Entry **entries;
+};
+
 struct Entry
 {
     char *key;
     char *value;
+    Entries *link;
     /*
         0 - string value
         1 - int value
+        2 - object value
     */
     int type;
 };
 
-Entry *ENTRIES[ENTRY_AMOUNT];
-int CURRENT_ENTRY = 0;
+bool jsonArrayFA(FILE *fd);
+bool jsonObjectFA(FILE *fd, Entries *ENTRIES);
+
+// Entry *ENTRIES[ENTRY_AMOUNT];
+// int CURRENT_ENTRY = 0;
 
 void printDev(char *msg)
 {
@@ -89,7 +103,49 @@ bool closedBracketFA(FILE *fd)
     }
     else
     {
+        printf("print: %c", c);
         printDev((char *)"closedBracketFA false\n");
+
+        fseek(fd, -1, SEEK_CUR);
+        return false;
+    }
+}
+
+bool openSquareBracketFA(FILE *fd)
+{
+    printDev((char *)"openSquareBracketFA\n");
+    char c = getc(fd);
+
+    printPart(fd, 1);
+    if (c == '[')
+    {
+        printDev((char *)"openSquareBracketFA true\n");
+        return true;
+    }
+    else
+    {
+        printDev((char *)"openSquareBracketFA false\n");
+        fseek(fd, -1, SEEK_CUR);
+        return false;
+    }
+}
+
+bool closedSquareBracketFA(FILE *fd)
+{
+    printDev((char *)"closedSquareBracketFA\n");
+    char c = getc(fd);
+
+    printPart(fd, 1);
+
+    if (c == ']')
+    {
+        printDev((char *)"closedSquareBracketFA true\n");
+
+        return true;
+    }
+    else
+    {
+        printDev((char *)"closedSquareBracketFA false\n");
 
         fseek(fd, -1, SEEK_CUR);
         return false;
@@ -218,16 +274,46 @@ bool stringFA(FILE *fd)
 bool numberFA(FILE *fd)
 {
     printDev((char *)"numberFA\n");
-
+    char initialFilePointer = ftell(fd);
     char c;
     int i = 0;
-    do
+    bool isNumber = false;
+
+    c = getc(fd);
+
+    while (c >= '0' && c <= '9')
     {
         c = getc(fd);
-
+        isNumber = true;
         i++;
+    }
 
-    } while (c >= '0' && c <= '9');
+    if (!isNumber)
+    {
+        fseek(fd, initialFilePointer, SEEK_SET);
+        return false;
+    }
+
+    if (c != ',')
+    {
+
+        // skip spaces
+        int i = 0;
+        do
+        {
+            c = getc(fd);
+            i++;
+            printf("c %c\n", c);
+        } while (c == ' ' || c == '\n' || c == '\t');
+
+        if (c != ',' && c != '}')
+        {
+            fseek(fd, initialFilePointer, SEEK_SET);
+            return false;
+        }
+
+        fseek(fd, -i, SEEK_CUR);
+    }
 
     fseek(fd, -1, SEEK_CUR);
     printDev((char *)"numberFA true\n");
@@ -235,7 +321,7 @@ bool numberFA(FILE *fd)
     return true;
 }
 
-bool keyFA(FILE *fd)
+bool keyFA(FILE *fd, Entries *ENTRIES)
 {
     printDev((char *)"keyFA\n");
     int initialStringPtr;
@@ -257,14 +343,14 @@ bool keyFA(FILE *fd)
         Entry *e = (Entry *)malloc(sizeof(Entry));
         e->key = str;
 
-        ENTRIES[CURRENT_ENTRY] = e;
+        ENTRIES->entries[ENTRIES->count] = e;
     }
 
     printf("keyFA %d\n", res);
     return res;
 }
 
-bool valueFA(FILE *fd)
+bool valueFA(FILE *fd, Entries *ENTRIES)
 {
     int initialStringPtr = ftell(fd);
 
@@ -274,8 +360,8 @@ bool valueFA(FILE *fd)
     if (res)
     {
         char *str = getStringPart(fd, ftell(fd) - initialStringPtr);
-        ENTRIES[CURRENT_ENTRY]->value = str;
-        ENTRIES[CURRENT_ENTRY]->type = 0;
+        ENTRIES->entries[ENTRIES->count]->value = str;
+        ENTRIES->entries[ENTRIES->count]->type = 0;
     }
     else
     {
@@ -284,8 +370,34 @@ bool valueFA(FILE *fd)
         if (res)
         {
             char *str = getStringPart(fd, ftell(fd) - initialStringPtr);
-            ENTRIES[CURRENT_ENTRY]->value = str;
-            ENTRIES[CURRENT_ENTRY]->type = 1;
+            ENTRIES->entries[ENTRIES->count]->value = str;
+            ENTRIES->entries[ENTRIES->count]->type = 1;
+        }
+        else
+        {
+
+            Entry **e = (Entry **)malloc(sizeof(Entry *) * 100);
+            Entries *NEW_ENTRIES = (Entries *)malloc(sizeof(Entries));
+            NEW_ENTRIES->entries = e;
+            NEW_ENTRIES->count = 0;
+
+            res = jsonObjectFA(fd, NEW_ENTRIES);
+
+            // char *str = getStringPart(fd, ftell(fd) - initialStringPtr);
+            if (res)
+            {
+                char *str = (char *)malloc(sizeof(char) * 10);
+                str[0] = 'o';
+                str[1] = 'b';
+                str[2] = 'j';
+                str[3] = 'e';
+                str[4] = 'c';
+                str[5] = 't';
+                str[6] = '\0';
+                ENTRIES->entries[ENTRIES->count]->link = NEW_ENTRIES;
+                ENTRIES->entries[ENTRIES->count]->value = "OBJECT";
+                ENTRIES->entries[ENTRIES->count]->type = 2;
+            }
         }
     }
 
@@ -293,18 +405,18 @@ bool valueFA(FILE *fd)
     return res;
 }
 
-bool recordFA(FILE *fd)
+bool recordFA(FILE *fd, Entries *ENTRIES)
 {
     printDev((char *)"recordFA\n");
     bool res = (spaceFA(fd) || 1) &&
-               keyFA(fd) &&
+               keyFA(fd, ENTRIES) &&
                (spaceFA(fd) || 1) &&
-               valueFA(fd) &&
+               valueFA(fd, ENTRIES) &&
                (spaceFA(fd) || 1);
 
     if (res)
     {
-        CURRENT_ENTRY++;
+        ENTRIES->count++;
     }
 
     printf("recordFA %d\n", res);
@@ -332,23 +444,86 @@ bool comaFA(FILE *fd)
         return false;
     }
 }
-bool recordsFA(FILE *fd)
+bool recordsFA(FILE *fd, Entries *ENTRIES)
 {
     printDev((char *)"recordsFA\n");
 
-    while (recordFA(fd) && (spaceFA(fd) || 1) && (comaFA(fd)))
+    while (recordFA(fd, ENTRIES) && (spaceFA(fd) || 1) && (comaFA(fd) || 1))
     {
+    }
+
+    printf("NUMBER %d\n", ftell(fd));
+
+    return true;
+}
+
+bool jsonObjectFA(FILE *fd, Entries *ENTRIES)
+{
+
+    printDev((char *)"jsonObjectFA\n");
+    printf("jsonObjectFABefore %d\n", ftell(fd));
+    bool res = openBracketFA(fd) && recordsFA(fd, ENTRIES) && closedBracketFA(fd);
+    printf("jsonObjectFA %d\n", res);
+    printf("jsonObjectFA %d\n", ftell(fd));
+    return res;
+}
+
+bool jsonObjectsFA(FILE *fd)
+{
+    printDev((char *)"jsonObjectsFA\n");
+
+    Entry **e = (Entry **)malloc(sizeof(Entry *) * 100);
+    Entries *NEW_ENTRIES = (Entries *)malloc(sizeof(Entries));
+    NEW_ENTRIES->entries = e;
+    NEW_ENTRIES->count = 0;
+
+    while (jsonObjectFA(fd, NEW_ENTRIES) && (spaceFA(fd) || 1) && (comaFA(fd)))
+    {
+        Entry **e = (Entry **)malloc(sizeof(Entry *) * 100);
+        Entries *NEW_ENTRIES = (Entries *)malloc(sizeof(Entries));
+        NEW_ENTRIES->entries = e;
+        NEW_ENTRIES->count = 0;
     }
 
     return true;
 }
 
-bool jsonFA(FILE *fd)
+bool jsonArrayFA(FILE *fd)
 {
-    printDev((char *)"jsonFA\n");
-    bool res = openBracketFA(fd) && recordsFA(fd) && closedBracketFA(fd);
-    printf("jsonFA %d\n", res);
+    printDev((char *)"jsonArrayFA\n");
+    bool res = openSquareBracketFA(fd) && jsonObjectsFA(fd) && closedSquareBracketFA(fd);
+    printf("jsonArrayFA %d\n", res);
     return res;
+}
+
+void printLevelIndentation(int level)
+{
+    for (int i = 0; i < level; i++)
+    {
+        printf("\t");
+    }
+}
+
+void printEntries(Entries *entries, int level)
+{
+    for (int i = 0; i < entries->count; i++)
+    {
+
+        printLevelIndentation(level);
+        printf("key: %s\n", entries->entries[i]->key);
+        printLevelIndentation(level);
+        printf("value: %s\n", entries->entries[i]->value);
+        printLevelIndentation(level);
+        printf("link: %s\n", entries->entries[i]->link);
+        printLevelIndentation(level);
+        printf("type: %d\n", entries->entries[i]->type);
+        printf("\n");
+
+        if (entries->entries[i]->type == 2)
+        {
+            printEntries(entries->entries[i]->link, level + 1);
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -368,22 +543,21 @@ int main(int argc, char *argv[])
     char c;
     bool insideObject = false;
 
-    bool res = jsonFA(fd);
+    Entry **e = (Entry **)malloc(sizeof(Entry *) * 100);
+    Entries *E = (Entries *)malloc(sizeof(Entries));
+    E->entries = e;
+    E->count = 0;
+
+    bool res = jsonObjectFA(fd, E);
     printf("isValid: %d\n", res);
 
     // print entries
     printf("\n");
 
-    printf("Entry amount: %d", CURRENT_ENTRY);
-    printf("\n\n");
+    printEntries(E, 0);
 
-    for (int i = 0; i < CURRENT_ENTRY; i++)
-    {
-        printf("key: %s\n", ENTRIES[i]->key);
-        printf("value: %s\n", ENTRIES[i]->value);
-        printf("type: %d\n", ENTRIES[i]->type);
-        printf("=================== \n");
-    }
+    printf("Entry amount: %d", E->count);
+    printf("\n\n");
 
     return 0;
 }
