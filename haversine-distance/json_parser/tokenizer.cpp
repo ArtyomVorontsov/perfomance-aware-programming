@@ -99,7 +99,7 @@ bool matchNumber(FILE *fd, int *len)
 
     c = getc(fd);
 
-    while (isdigit(c))
+    while (isdigit(c) || c == '.')
     {
         c = getc(fd);
         isNumber = true;
