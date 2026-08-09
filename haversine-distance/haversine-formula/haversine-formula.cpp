@@ -1,19 +1,19 @@
-#include <math.h>
+#include "./haversine-formula.h"
 
-static float Square(float A)
+float Square(float A)
 {
     float Result = (A * A);
     return Result;
 }
 
-static float RadiansFromDegrees(float Degrees)
+float RadiansFromDegrees(float Degrees)
 {
     float Result = 0.01745329251994329577 * Degrees;
     return Result;
 }
 
 // NOTE(casey): EarthRadius is generally expected to be 6372.8
-static float ReferenceHaversine(float X0, float Y0, float X1, float Y1, float EarthRadius)
+float ReferenceHaversine(float X0, float Y0, float X1, float Y1, float EarthRadius)
 {
     /* NOTE(casey): This is not meant to be a "good" way to calculate the Haversine distance.
        Instead, it attempts to follow, as closely as possible, the formula used in the real-world
