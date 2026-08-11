@@ -2,42 +2,191 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <stdint.h>
 #include "../haversine-formula/haversine-formula.h"
 
-int harvestineDistanceJsonGenerator(size_t amount, double min, double max, size_t seed)
+struct random_series
 {
-    srand(seed);
+    uint64_t A, B, C, D;
+};
 
-    FILE *file = fopen("harvestine.json", "w");
+static uint64_t RotateLeft(uint64_t V, int Shift)
+{
+    uint64_t Result = ((V << Shift) | (V >> (64 - Shift)));
+    return Result;
+}
 
-    double averageHaversineDistance = 0;
+static uint64_t RandomU64(random_series *Series)
+{
+    uint64_t A = Series->A;
+    uint64_t B = Series->B;
+    uint64_t C = Series->C;
+    uint64_t D = Series->D;
 
-    fprintf(file, "{\"pairs\": [");
-    for (size_t i = 0; i < amount; i++)
+    uint64_t E = A - RotateLeft(B, 27);
+
+    A = (B ^ RotateLeft(C, 17));
+    B = (C + D);
+    C = (D + E);
+    D = (E + A);
+
+    Series->A = A;
+    Series->B = B;
+    Series->C = C;
+    Series->D = D;
+
+    return D;
+}
+
+static random_series Seed(uint64_t Value)
+{
+    random_series Series = {};
+
+    // NOTE(casey): This is the seed pattern for JSF generators, as per the original post
+    Series.A = 0xf1ea5eed;
+    Series.B = Value;
+    Series.C = Value;
+    Series.D = Value;
+
+    uint32_t Count = 20;
+    while (Count--)
     {
-        double x0 = min + ((double)rand() / RAND_MAX) * (max - min);
-        double x1 = min + ((double)rand() / RAND_MAX) * (max - min);
-        double y0 = min + ((double)rand() / RAND_MAX) * (max - min);
-        double y1 = min + ((double)rand() / RAND_MAX) * (max - min);
+        RandomU64(&Series);
+    }
 
-        double haversineDistance = ReferenceHaversine(x0, x1, y0, y1, 6372.8);
+    return Series;
+}
 
-        averageHaversineDistance += haversineDistance;
+static double RandomInRange(random_series *Series, double Min, double Max)
+{
+    double t = (double)RandomU64(Series) / (double)UINT64_MAX;
+    double Result = (1.0 - t) * Min + t * Max;
 
-        fprintf(file, "{\"x0\": %f, \"x1\": %f, \"y0\": %f, \"y1\": %f, haversineDistance: %f}", x0, x1, y0, y1, haversineDistance);
+    return Result;
+}
 
-        if (i < amount - 1)
+static FILE *Open(long long unsigned PairCount, char const *Label, char const *Extension)
+{
+    char Temp[256];
+    sprintf(Temp, "data_%llu_%s.%s", PairCount, Label, Extension);
+    FILE *Result = fopen(Temp, "wb");
+    if (!Result)
+    {
+        fprintf(stderr, "Unable to open \"%s\" for writing.\n", Temp);
+    }
+
+    return Result;
+}
+
+static double RandomDegree(random_series *Series, double Center, double Radius, double MaxAllowed)
+{
+    double MinVal = Center - Radius;
+    if (MinVal < -MaxAllowed)
+    {
+        MinVal = -MaxAllowed;
+    }
+
+    double MaxVal = Center + Radius;
+    if (MaxVal > MaxAllowed)
+    {
+        MaxVal = MaxAllowed;
+    }
+
+    double Result = RandomInRange(Series, MinVal, MaxVal);
+    return Result;
+}
+
+int harvestineDistanceJsonGenerator(size_t pairCount, uint64_t seed, char *method)
+{
+
+    uint64_t clusterCountLeft = UINT64_MAX;
+    double maxAllowedX = 180;
+    double maxAllowedY = 90;
+
+    double xCenter = 0;
+    double yCenter = 0;
+    double xRadius = maxAllowedX;
+    double yRadius = maxAllowedY;
+
+    if (strcmp(method, "cluster") == 0)
+    {
+        clusterCountLeft = 0;
+    }
+    else if (strcmp(method, "uniform") != 0)
+    {
+
+        method = "uniform";
+        fprintf(stderr, "WARNING: Unrecognized method name. Using uniform by default.\n");
+    }
+
+    random_series series = Seed(seed);
+    uint64_t maxPairCount = (1ULL << 34);
+
+    if (pairCount < maxPairCount)
+    {
+        uint64_t clusterCountMax = 1 + (pairCount / 64);
+
+        FILE *flexJSON = Open(pairCount, "flex", "json");
+        FILE *haverAnswers = Open(pairCount, "haveranswer", "double");
+        if (flexJSON && haverAnswers)
         {
-            fprintf(file, ",");
+
+            fprintf(flexJSON, "{\"pairs\": [\n");
+            double sum = 0;
+            double sumCoef = 1.0 / (double)pairCount;
+            for (size_t i = 0; i < pairCount; i++)
+            {
+
+                if (clusterCountLeft-- == 0)
+                {
+                    clusterCountLeft = clusterCountMax;
+                    xCenter = RandomInRange(&series, --maxAllowedX, maxAllowedX);
+                    yCenter = RandomInRange(&series, --maxAllowedY, maxAllowedY);
+                    xRadius = RandomInRange(&series, 0, maxAllowedX);
+                    yRadius = RandomInRange(&series, 0, maxAllowedY);
+                }
+
+                double x0 = RandomDegree(&series, xCenter, xRadius, maxAllowedX);
+                double y0 = RandomDegree(&series, yCenter, yRadius, maxAllowedY);
+                double x1 = RandomDegree(&series, xCenter, xRadius, maxAllowedX);
+                double y1 = RandomDegree(&series, yCenter, yRadius, maxAllowedY);
+
+                double earthRadius = 6372.8;
+                double haversineDistance = ReferenceHaversine(x0, x1, y0, y1, earthRadius);
+
+                sum += sumCoef * haversineDistance;
+
+                fprintf(flexJSON, "{\"x0\": %f, \"x1\": %f, \"y0\": %f, \"y1\": %f}", x0, x1, y0, y1);
+
+                if (i < pairCount - 1)
+                {
+                    fprintf(flexJSON, ",\n");
+                }
+
+                fwrite(&haversineDistance, sizeof(haversineDistance), 1, haverAnswers);
+            }
+
+            fprintf(flexJSON, "]}");
+
+            fprintf(stdout, "Method: %s\n", method);
+            fprintf(stdout, "Random seed: %llu\n", seed);
+            fprintf(stdout, "Pair count: %llu\n", pairCount);
+            fprintf(stdout, "Expected sum: %.16f\n", sum);
+
+            if (flexJSON)
+            {
+                fclose(flexJSON);
+            }
+            if (haverAnswers)
+            {
+                fclose(haverAnswers);
+            }
         }
     }
-    fprintf(file, "]}");
-
-    fclose(file);
-
-    averageHaversineDistance = averageHaversineDistance / amount;
-
-    printf("averageHaversineDistance %f\n", averageHaversineDistance);
+    else
+    {
+        fprintf(stderr, "To avoid accidentally generating massive files, number of pairs must be less than %llu.\n", maxPairCount);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -46,15 +195,13 @@ int main(int argc, char *argv[])
     char *argv1 = argv[1];
     char *argv2 = argv[2];
     char *argv3 = argv[3];
-    char *argv4 = argv[4];
 
     if (argv1 && strcmp(argv1, "--help") == 0)
     {
         printf("Arguments: \n");
         printf("amount - 1\n");
-        printf("min - 2\n");
-        printf("max - 3\n");
-        printf("seed - 4\n");
+        printf("seed - 2\n");
+        printf("method - 3\n");
 
         return 0;
     }
@@ -67,26 +214,19 @@ int main(int argc, char *argv[])
 
     if (!argv2)
     {
-        printf("Min is not provided\n");
+        printf("Seed is not provided\n");
         return 0;
     }
 
     if (!argv3)
     {
-        printf("Max is not provided\n");
-        return 0;
-    }
-
-    if (!argv4)
-    {
-        printf("Seed is not provided\n");
+        printf("Method is not provided\n");
         return 0;
     }
 
     size_t amount = strtod(argv1, NULL);
-    double min = strtod(argv2, NULL);
-    double max = strtod(argv3, NULL); // 6372.8;
-    size_t seed = strtod(argv4, NULL);
+    size_t seed = strtod(argv2, NULL);
+    char *method = argv3;
 
-    harvestineDistanceJsonGenerator(amount, min, max, seed);
+    harvestineDistanceJsonGenerator(amount, seed, method);
 }
