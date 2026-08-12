@@ -333,7 +333,7 @@ void printValue(JsonValue *jsonValue, size_t level)
     }
 }
 
-void parser(Lexer *lexer)
+JsonValue *parser(Lexer *lexer)
 {
     Parser *p = (Parser *)malloc(sizeof(Parser));
 
@@ -343,25 +343,5 @@ void parser(Lexer *lexer)
 
     JsonValue *jv = parseValue(p);
 
-    printf("type: %d\n", jv->type);
-
-    printValue(jv, 0);
-}
-
-int main(int argc, char *argv[])
-{
-    if (argc <= 1)
-    {
-        printf((char *)"No json file provided.");
-        return 1;
-    }
-
-    char *fileName = argv[1];
-
-    FILE *fileDescriptor = fopen(fileName, "r");
-
-    Lexer *lexerResult = lexer(fileDescriptor);
-    parser(lexerResult);
-
-    return 0;
+    return jv;
 }

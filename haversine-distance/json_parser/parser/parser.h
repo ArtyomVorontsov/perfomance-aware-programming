@@ -61,4 +61,6 @@ struct Parser
     size_t current;
 };
 
+JsonValue *parser(Lexer *lexer);
+
 #endif
