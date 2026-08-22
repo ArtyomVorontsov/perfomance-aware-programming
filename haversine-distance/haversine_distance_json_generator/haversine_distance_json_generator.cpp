@@ -167,6 +167,7 @@ int harvestineDistanceJsonGenerator(size_t pairCount, uint64_t seed, char *metho
             }
 
             fprintf(flexJSON, "]}");
+            fwrite(&sum, sizeof(sum), 1, haverAnswers);
 
             fprintf(stdout, "Method: %s\n", method);
             fprintf(stdout, "Random seed: %llu\n", seed);

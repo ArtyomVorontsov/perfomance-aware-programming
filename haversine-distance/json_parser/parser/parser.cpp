@@ -14,7 +14,6 @@ Token *advance(Parser *parser)
 
 bool match(Parser *parser, TOKEN_TYPE type)
 {
-    printf("match %s\n", TOKEN_NAMES[type]);
     return peek(parser)->type == type;
 }
 
@@ -24,7 +23,6 @@ JsonValue *parseValue(Parser *parser);
 
 JsonEntry *parsePair(Parser *parser)
 {
-    printf("parsePair\n");
 
     Token *key;
 
@@ -79,7 +77,6 @@ JsonObject *parseObject(Parser *parser)
 
     jo->entries = ne;
 
-    printf("parseObject\n");
     if (match(parser, TOKEN_LBRACE))
     {
         advance(parser);
@@ -207,7 +204,6 @@ JsonValue *parseValue(Parser *parser)
         exit(EXIT_FAILURE);
     }
 
-    printf("parseValue\n");
     if (match(parser, TOKEN_LBRACE))
     {
         JsonObject *jo = parseObject(parser);
@@ -313,19 +309,15 @@ void printValue(JsonValue *jsonValue, size_t level)
         break;
     case JSON_STRING:
         printLevelIndentation(level);
-        printf("string: %s\n", jsonValue->as.string);
         break;
     case JSON_NUMBER:
         printLevelIndentation(level);
-        printf("number: %f\n", jsonValue->as.number);
         break;
     case JSON_BOOL:
         printLevelIndentation(level);
-        printf("boolean: %s\n", jsonValue->as.boolean ? "true" : "false");
         break;
     case JSON_NULL:
         printLevelIndentation(level);
-        printf("null\n");
         break;
 
     default:

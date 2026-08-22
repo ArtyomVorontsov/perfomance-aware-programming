@@ -84,7 +84,6 @@ bool matchNumber(FILE *fd, int *len)
 
 int matchString(FILE *fileDescriptor, int *stringLength)
 {
-    printf("matchString\n");
     if (getc(fileDescriptor) == '"' &&
         matchChars(fileDescriptor, stringLength) &&
         getc(fileDescriptor) == '"')
@@ -98,20 +97,17 @@ int matchString(FILE *fileDescriptor, int *stringLength)
 
 int matchKeyword(FILE *fileDescriptor, const char *keyword, const char *name)
 {
-    printf("%s\n", name);
     int i = 0;
     while (*(keyword + i) != '\0')
     {
         if (getc(fileDescriptor) != *(keyword + i))
         {
-            printf("%s false\n", name);
             fseek(fileDescriptor, -(i + 1), SEEK_CUR);
             return false;
         }
         i++;
     }
 
-    printf("%s true\n", name);
     return true;
 }
 
@@ -163,36 +159,29 @@ Lexer *lexer(FILE *fileDescriptor)
         increaseTokensBuffer(lexer);
 
         int stringLength = 0;
-        printf("Character: %c (%d), location: %ld\n", c, c, ftell(fileDescriptor));
         if (c == '{')
         {
             addToken(strdup("{"), TOKEN_LBRACE, lexer);
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c == '}')
         {
             addToken(strdup("}"), TOKEN_RBRACE, lexer);
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c == '[')
         {
             addToken(strdup("["), TOKEN_LBRACKET, lexer);
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c == ']')
         {
             addToken(strdup("]"), TOKEN_RBRACKET, lexer);
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c == ',')
         {
             addToken(strdup(","), TOKEN_COMMA, lexer);
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c == ':')
         {
             addToken(strdup(":"), TOKEN_COLON, lexer);
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c == 't')
         {
@@ -202,7 +191,6 @@ Lexer *lexer(FILE *fileDescriptor)
             {
                 ungetc(c, fileDescriptor);
                 addToken(strdup("true"), TOKEN_TRUE, lexer);
-                printf("position %ld\n", ftell(fileDescriptor));
             }
         }
         else if (c == 'f')
@@ -213,7 +201,6 @@ Lexer *lexer(FILE *fileDescriptor)
             {
                 ungetc(c, fileDescriptor);
                 addToken(strdup("false"), TOKEN_FALSE, lexer);
-                printf("position %ld\n", ftell(fileDescriptor));
             }
         }
         else if (c == 'n')
@@ -224,13 +211,11 @@ Lexer *lexer(FILE *fileDescriptor)
             {
                 ungetc(c, fileDescriptor);
                 addToken(strdup("null"), TOKEN_NULL, lexer);
-                printf("position %ld\n", ftell(fileDescriptor));
             }
         }
         else if (isspace(c))
         {
             // remove space
-            printf("position %ld\n", ftell(fileDescriptor));
         }
         else if (c >= '0' && c <= '9')
         {
@@ -249,7 +234,6 @@ Lexer *lexer(FILE *fileDescriptor)
 
                 addToken(str, TOKEN_NUMBER, lexer);
 
-                printf("position %ld\n", ftell(fileDescriptor));
             }
         }
         else if (c == '"')
@@ -271,7 +255,6 @@ Lexer *lexer(FILE *fileDescriptor)
 
                 addToken(str, TOKEN_STRING, lexer);
 
-                printf("position %ld\n", ftell(fileDescriptor));
             }
         }
         else
@@ -283,7 +266,7 @@ Lexer *lexer(FILE *fileDescriptor)
         }
     }
 
-    printTokens(lexer);
+    // printTokens(lexer);
 
     return lexer;
 }

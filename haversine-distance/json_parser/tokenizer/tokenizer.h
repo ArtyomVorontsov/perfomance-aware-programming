@@ -6,7 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#define IS_DEV true
+#define IS_DEV false
 
 typedef enum
 {

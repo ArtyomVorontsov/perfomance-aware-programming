@@ -1,4 +1,6 @@
 *.out
 .gdb_history
 temp
-a.json
+*.gch
+*.json
+*.double
