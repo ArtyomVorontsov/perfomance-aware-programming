@@ -1,18 +1,14 @@
-#include <x86intrin.h>
-#include <sys/time.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "./profiler.hpp"
 
-
-static uint64_t GetOSTimerFreq(void){
+uint64_t GetOSTimerFreq(void)
+{
     return 1000000;
 }
 
-static uint64_t ReadOSTimer(void){
+uint64_t ReadOSTimer(void)
+{
     struct timeval Value;
-    
+
     gettimeofday(&Value, 0);
 
     uint64_t result = GetOSTimerFreq() * (uint64_t)Value.tv_sec + (uint64_t)Value.tv_usec;
@@ -20,12 +16,13 @@ static uint64_t ReadOSTimer(void){
     return result;
 }
 
-inline uint64_t ReadCPUTmer(void){
+inline uint64_t ReadCPUTmer(void)
+{
     return __rdtsc();
 }
 
-
-static uint64_t EstimateCPUFrequency(uint64_t msToWait){
+uint64_t EstimateCPUFrequency(uint64_t msToWait)
+{
     uint64_t OSFreq = GetOSTimerFreq();
     uint64_t OSElapsed = 0;
     uint64_t OSStart = 0;
@@ -45,17 +42,13 @@ static uint64_t EstimateCPUFrequency(uint64_t msToWait){
 
     CPUEnd = ReadCPUTmer();
     CPUElapsed = CPUEnd - CPUStart;
-    
+
     uint64_t CPUFreq = 0;
-    
-    if(OSElapsed){
+
+    if (OSElapsed)
+    {
         CPUElapsed = OSFreq * CPUElapsed / OSElapsed;
     }
-    
-    return CPUFreq;
-} 
 
-int main(){
-    uint64_t estimated = EstimateCPUFrequency(1000);
-    printf("Estimated %llu\n", estimated);
+    return CPUFreq;
 }
