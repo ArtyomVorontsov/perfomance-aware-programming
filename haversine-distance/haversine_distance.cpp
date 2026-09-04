@@ -1,4 +1,5 @@
 #include "./haversine_distance.h"
+#include "./metrics/profiler.hpp"
 
 struct haversine_pair
 {
@@ -8,6 +9,7 @@ struct haversine_pair
 
 static buffer ReadEntireFile(char *FileName)
 {
+    PROFILE_FUNCTION();
     buffer Result = {};
 
     FILE *File = fopen(FileName, "rb");
@@ -39,6 +41,8 @@ static buffer ReadEntireFile(char *FileName)
 
 static double SumHaversineDistances(uint64_t PairCount, haversine_pair *Pairs)
 {
+    PROFILE_FUNCTION();
+
     double Sum = 0;
 
     double SumCoef = 1 / (double)PairCount;
@@ -55,6 +59,8 @@ static double SumHaversineDistances(uint64_t PairCount, haversine_pair *Pairs)
 
 static uint64_t ParseHaversinePairs(FILE *InputJSON, uint64_t MaxPairCount, haversine_pair *Pairs)
 {
+    PROFILE_FUNCTION();
+
     uint64_t PairCount = 0;
 
     Lexer *lexerResult = lexer(InputJSON);
@@ -83,38 +89,6 @@ static uint64_t ParseHaversinePairs(FILE *InputJSON, uint64_t MaxPairCount, have
 int main(int ArgCount, char **Args)
 {
 
-    uint64_t StartupStart;
-    uint64_t StartupEnd;
-    uint64_t StartupElapsed;
-
-    uint64_t ReadStart;
-    uint64_t ReadEnd;
-    uint64_t ReadElapsed;
-
-    uint64_t MiscStart;
-    uint64_t MiscEnd;
-    uint64_t MiscElapsed;
-
-    uint64_t ParseStart;
-    uint64_t ParseEnd;
-    uint64_t ParseElapsed;
-
-    uint64_t SumStart;
-    uint64_t SumEnd;
-    uint64_t SumElapsed;
-
-    uint64_t OutputStart;
-    uint64_t OutputEnd;
-    uint64_t OutputElapsed;
-
-    uint64_t StartTime;
-    uint64_t EndTime;
-    uint64_t ElapsedTime;
-
-    StartTime = ReadOSTimer();
-
-    StartupStart = ReadCPUTmer();
-
     int Result = 1;
 
     if ((ArgCount == 2) || (ArgCount == 3))
@@ -128,34 +102,17 @@ int main(int ArgCount, char **Args)
         {
             buffer ParsedValues = AllocateBuffer(MaxPairCount * sizeof(haversine_pair));
 
-            StartupEnd = ReadCPUTmer();
-            StartupElapsed = StartupEnd - StartupStart;
-
             if (ParsedValues.Count)
             {
                 haversine_pair *Pairs = (haversine_pair *)ParsedValues.Data;
 
-                ParseStart = ReadCPUTmer();
-
                 uint64_t PairCount = ParseHaversinePairs(file, MaxPairCount, Pairs);
-                ParseEnd = ReadCPUTmer();
-                ParseElapsed = ParseEnd - ParseStart;
-
-                SumStart = ReadCPUTmer();
 
                 double Sum = SumHaversineDistances(PairCount, Pairs);
-
-                SumEnd = ReadCPUTmer();
-                SumElapsed = SumEnd - SumStart;
-
-                OutputStart = ReadCPUTmer();
 
                 fprintf(stdout, "Input size: %llu\n", InputJSON.Count);
                 fprintf(stdout, "Pair count: %llu\n", PairCount);
                 fprintf(stdout, "Haversine sum: %.16f\n", Sum);
-
-                OutputEnd = ReadCPUTmer();
-                OutputElapsed = OutputEnd - OutputStart;
 
                 if (ArgCount == 3)
                 {
@@ -198,40 +155,6 @@ int main(int ArgCount, char **Args)
         fprintf(stderr, "       %s [haversine_input.json] [answers.double]\n", Args[0]);
     }
 
-    EndTime = ReadOSTimer();
-
-    ElapsedTime = EndTime - StartTime;
-
-    uint64_t totalElapsed =
-        StartupElapsed +
-        ReadElapsed +
-        MiscElapsed +
-        ParseElapsed +
-        SumElapsed +
-        OutputElapsed;
-
-    double percent = ((double)totalElapsed / 100);
-
-    double StartupPercent = (double)StartupElapsed / percent;
-    double ReadPercent = (double)ReadElapsed / percent;
-    double MiscPercent = (double)MiscElapsed / percent;
-    double ParsePercent = (double)ParseElapsed / percent;
-    double SumPercent = (double)SumElapsed / percent;
-    double OutputPercent = (double)OutputElapsed / percent;
-
-    uint64_t cpuFreq = EstimateCPUFrequency(100);
-
-    printf("\n");
-    printf("Profiling info:\n");
-    printf("Total time: %llums (CPU freq %llu)\n", ElapsedTime, cpuFreq);
-    printf("Startup: %llu (%.4f%)\n", StartupElapsed, StartupPercent);
-    printf("Read: %llu (%.4f%)\n", ReadElapsed, ReadPercent);
-    printf("Misc: %llu (%.4f%)\n", MiscElapsed, MiscPercent);
-    printf("Parse: %llu (%.4f%)\n", ParseElapsed, ParsePercent);
-    printf("Sum: %llu (%.4f%)\n", SumElapsed, SumPercent);
-    printf("Output: %llu (%.4f%)\n", OutputElapsed, OutputPercent);
-    printf("\n");
-    printf("Total: %llu (%.4f%)\n", totalElapsed, StartupPercent + ReadPercent + MiscPercent + ParsePercent + SumPercent + OutputPercent);
-
+    printProfilerData();
     return Result;
 }
