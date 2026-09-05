@@ -9,7 +9,7 @@ struct haversine_pair
 
 static buffer ReadEntireFile(char *FileName)
 {
-    PROFILE_FUNCTION();
+    TimeFunction;
     buffer Result = {};
 
     FILE *File = fopen(FileName, "rb");
@@ -41,7 +41,7 @@ static buffer ReadEntireFile(char *FileName)
 
 static double SumHaversineDistances(uint64_t PairCount, haversine_pair *Pairs)
 {
-    PROFILE_FUNCTION();
+    TimeFunction;
 
     double Sum = 0;
 
@@ -59,7 +59,7 @@ static double SumHaversineDistances(uint64_t PairCount, haversine_pair *Pairs)
 
 static uint64_t ParseHaversinePairs(FILE *InputJSON, uint64_t MaxPairCount, haversine_pair *Pairs)
 {
-    PROFILE_FUNCTION();
+    TimeFunction;
 
     uint64_t PairCount = 0;
 

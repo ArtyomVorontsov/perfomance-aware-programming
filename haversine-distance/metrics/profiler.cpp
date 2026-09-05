@@ -55,42 +55,46 @@ uint64_t EstimateCPUFrequency(uint64_t msToWait)
 
 extern ProfilerData *PROFILER_DATA = (ProfilerData *)malloc(sizeof(ProfilerData));
 
-void addNewProfilerRecord()
+void addNewProfilerRecord(uint32_t index)
 {
 
     // Allocate records buffer dynamically
-    if (PROFILER_DATA->recordsAmount == 0)
+    if (PROFILER_DATA->records == NULL)
     {
-        PROFILER_DATA->records = (ProfilerRecord **)malloc(sizeof(ProfilerRecord *) * 64);
+        PROFILER_DATA->records = (ProfilerRecord **)calloc(64, sizeof(ProfilerRecord *));
         PROFILER_DATA->allocatedRecordsBufferSize = 64;
     }
-    else if (PROFILER_DATA->recordsAmount > 0)
+    else if (PROFILER_DATA->recordsAmount > 64)
     {
         PROFILER_DATA->allocatedRecordsBufferSize *= 2;
         PROFILER_DATA->records = (ProfilerRecord **)realloc(PROFILER_DATA->records,
                                                             sizeof(ProfilerRecord *) * PROFILER_DATA->allocatedRecordsBufferSize);
     }
 
-    ProfilerRecord *profilerRecord = (ProfilerRecord *)malloc(sizeof(ProfilerRecord));
-    PROFILER_DATA->records[PROFILER_DATA->recordsAmount] = profilerRecord;
-    PROFILER_DATA->recordsAmount++;
+    if (PROFILER_DATA->records[index] == NULL)
+    {
+        ProfilerRecord *profilerRecord = (ProfilerRecord *)calloc(1, sizeof(ProfilerRecord));
+        PROFILER_DATA->records[index] = profilerRecord;
+    }
+    PROFILER_DATA->recordsAmount = PROFILER_DATA->recordsAmount < index ? index : PROFILER_DATA->recordsAmount;
 }
 
-FunctionGuard::FunctionGuard(const char *name) : name(name)
+FunctionGuard::FunctionGuard(const char *name, uint32_t index) : name(name)
 {
-    FunctionGuard::index = PROFILER_DATA->recordsAmount;
-    addNewProfilerRecord();
+    FunctionGuard::index = index;
+    addNewProfilerRecord(index);
     PROFILER_DATA->records[FunctionGuard::index]->name = name;
     PROFILER_DATA->records[FunctionGuard::index]->start = ReadCPUTmer();
 }
 
 FunctionGuard::~FunctionGuard()
 {
+
     PROFILER_DATA->records[FunctionGuard::index]->end = ReadCPUTmer();
-    PROFILER_DATA->records[FunctionGuard::index]->elapsed =
+    PROFILER_DATA->records[FunctionGuard::index]->elapsed +=
         PROFILER_DATA->records[FunctionGuard::index]->end - PROFILER_DATA->records[FunctionGuard::index]->start;
 
-    PROFILER_DATA->totalElapsed += PROFILER_DATA->records[FunctionGuard::index]->elapsed;
+    PROFILER_DATA->totalElapsed += PROFILER_DATA->records[FunctionGuard::index]->end - PROFILER_DATA->records[FunctionGuard::index]->start;
 }
 
 void printProfilerData()
@@ -104,7 +108,7 @@ void printProfilerData()
     printf("\n");
     printf("Profiling info:\n");
 
-    for (size_t i = 0; i < PROFILER_DATA->recordsAmount; i++)
+    for (size_t i = 0; i <= PROFILER_DATA->recordsAmount; i++)
     {
         double p = (double)PROFILER_DATA->records[i]->elapsed / percent;
 

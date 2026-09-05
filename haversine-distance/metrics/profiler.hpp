@@ -18,12 +18,17 @@ inline uint64_t ReadCPUTmer(void);
 #define PROFILE_FUNCTION() \
     FunctionGuard guard(__FUNCTION__)
 
+#define NameConcat2(A, B) A##B
+#define NameConcat(A, B) NameConcat2(A, B)
+#define TimeBlock(Name) FunctionGuard NameConcat(Block, __LINE__)(Name, __COUNTER__)
+#define TimeFunction TimeBlock(__func__)
+
 struct FunctionGuard
 {
     const char *name;
     uint64_t index;
 
-    FunctionGuard(const char *name);
+    FunctionGuard(const char *name, uint32_t index);
     ~FunctionGuard();
 };
 
