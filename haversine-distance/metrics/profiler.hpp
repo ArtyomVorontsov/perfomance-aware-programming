@@ -45,9 +45,13 @@ struct ProfilerData
     ProfilerRecord **records;
     uint64_t recordsAmount;
     uint64_t totalElapsed;
+    uint64_t start;
+    uint64_t end;
     uint64_t allocatedRecordsBufferSize;
 };
 
 void printProfilerData();
+void beginProfile();
+void endAndPrintProfile();
 
 #endif

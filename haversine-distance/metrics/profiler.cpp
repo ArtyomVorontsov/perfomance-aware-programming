@@ -93,8 +93,6 @@ FunctionGuard::~FunctionGuard()
     PROFILER_DATA->records[FunctionGuard::index]->end = ReadCPUTmer();
     PROFILER_DATA->records[FunctionGuard::index]->elapsed +=
         PROFILER_DATA->records[FunctionGuard::index]->end - PROFILER_DATA->records[FunctionGuard::index]->start;
-
-    PROFILER_DATA->totalElapsed += PROFILER_DATA->records[FunctionGuard::index]->end - PROFILER_DATA->records[FunctionGuard::index]->start;
 }
 
 void printProfilerData()
@@ -120,4 +118,17 @@ void printProfilerData()
 
     printf("\n");
     printf("Total: %llu (%.4f%)\n", totalElapsed, totalPercent);
+}
+
+void beginProfile()
+{
+    PROFILER_DATA->start = ReadCPUTmer();
+}
+
+void endAndPrintProfile()
+{
+    PROFILER_DATA->end = ReadCPUTmer();
+    PROFILER_DATA->totalElapsed = PROFILER_DATA->end - PROFILER_DATA->start;
+
+    printProfilerData();
 }

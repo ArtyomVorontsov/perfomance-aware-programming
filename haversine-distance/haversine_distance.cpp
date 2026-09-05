@@ -89,6 +89,8 @@ static uint64_t ParseHaversinePairs(FILE *InputJSON, uint64_t MaxPairCount, have
 int main(int ArgCount, char **Args)
 {
 
+    beginProfile();
+
     int Result = 1;
 
     if ((ArgCount == 2) || (ArgCount == 3))
@@ -104,6 +106,8 @@ int main(int ArgCount, char **Args)
 
             if (ParsedValues.Count)
             {
+                TimeBlock("Validation");
+
                 haversine_pair *Pairs = (haversine_pair *)ParsedValues.Data;
 
                 uint64_t PairCount = ParseHaversinePairs(file, MaxPairCount, Pairs);
@@ -155,6 +159,6 @@ int main(int ArgCount, char **Args)
         fprintf(stderr, "       %s [haversine_input.json] [answers.double]\n", Args[0]);
     }
 
-    printProfilerData();
+    endAndPrintProfile();
     return Result;
 }
